@@ -1,7 +1,4 @@
-import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
-import apiClient from '../lib/axios';
-import { StatsCard } from '../components/ui/StatsCard';
 import {
 	AreaChart,
 	Area,
@@ -11,14 +8,16 @@ import {
 	ResponsiveContainer,
 	CartesianGrid,
 } from 'recharts';
+import { StatsCard } from '../components/ui/StatsCard';
+import { PageHeader } from '../components/ui/PageHeader';
+import { useAdminStats } from '../hooks/queries/useAdmin';
 import {
 	Users,
-	FileText,
-	CreditCard,
-	UserPlus,
-	ShieldCheck,
+	Route,
+	ClipboardCheck,
+	Car,
+	Ticket,
 	ArrowRight,
-	Wallet,
 } from 'lucide-react';
 
 function SkeletonCard() {
@@ -45,233 +44,215 @@ function SkeletonChart() {
 	);
 }
 
+/**
+ * Painel de controlo da Boleia.
+ *
+ * Os números vêm de `GET /api/admin/stats`, que os agrega numa transacção só
+ * de leituras. As contagens por estado chegam sem chaves para os valores que
+ * nunca ocorreram, por isso tudo é lido com `?? 0` — um cartão com
+ * `undefined` é pior do que um cartão com zero.
+ */
 export function Dashboard() {
 	const navigate = useNavigate();
+	const { data, isLoading, error } = useAdminStats({ days: 14 });
 
-	const { data: dashboard, isLoading } = useQuery({
-		queryKey: ['admin', 'dashboard'],
-		queryFn: async () => {
-			const { data } = await apiClient.get('/api/admin/dashboard');
-			return data.data;
-		},
-	});
-
-	const metrics = dashboard?.metrics;
-	const transcriptionFlow: { date: string; count: number }[] =
-		dashboard?.transcriptionFlow ?? [];
-
-	const chartData = transcriptionFlow.map((d) => ({
-		date: d.date,
-		transcricoes: d.count,
-	}));
-
-	const totalTranscriptions = metrics?.totalTranscriptions ?? 0;
-	const totalUsers = metrics?.totalUsers ?? 0;
-	const totalSubscriptions = metrics?.totalActiveSubscriptions ?? 0;
-	const totalPayments = metrics?.totalPayments ?? 0;
+	const m = data?.metrics;
 
 	const quickActions = [
 		{
-			label: 'Criar Utilizador',
-			icon: UserPlus,
-			onClick: () => navigate('/users/create'),
-			color: 'text-primary bg-primary/10',
+			label: 'Rever pedidos de KYC',
+			to: '/kyc',
+			icon: ClipboardCheck,
+			count: m?.pendingKyc ?? 0,
 		},
 		{
-			label: 'Ver Transcrições',
-			icon: FileText,
-			onClick: () => navigate('/transcriptions'),
-			color: 'text-accent bg-accent/10',
+			label: 'Rever viaturas',
+			to: '/vehicles',
+			icon: Car,
+			count: m?.pendingVehicleReview ?? 0,
 		},
 		{
-			label: 'Gerir Planos',
-			icon: ShieldCheck,
-			onClick: () => navigate('/plans'),
-			color: 'text-success bg-success/10',
+			label: 'Reservas por decidir',
+			to: '/bookings',
+			icon: Ticket,
+			count: m?.pendingBookings ?? 0,
 		},
 	];
 
 	return (
-		<div className="space-y-6">
-			<div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-				<div>
-					<h1 className="text-2xl font-bold font-display text-text">
-						Dashboard
-					</h1>
-					<p className="mt-0.5 text-sm text-text-secondary">
-						Visão geral da plataforma
-					</p>
+		<div>
+			<PageHeader
+				title="Painel de controlo"
+				subtitle="Operação da Boleia em Angola"
+				icon={Route}
+			/>
+
+			{error ? (
+				<div className="rounded-xl border border-error/30 bg-error/5 p-4 text-body-small text-error">
+					Não foi possível carregar as métricas. Verifica a ligação ao
+					servidor.
 				</div>
+			) : null}
+
+			<div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+				{isLoading || !m ? (
+					<>
+						<SkeletonCard />
+						<SkeletonCard />
+						<SkeletonCard />
+						<SkeletonCard />
+					</>
+				) : (
+					<>
+						<StatsCard
+							label="Utilizadores"
+							value={m.totalUsers}
+							subtitle={`${
+								m.usersByRole.DRIVER ?? 0
+							} motoristas · ${m.usersByRole.USER ?? 0} passageiros`}
+							icon={Users}
+							delay={0}
+						/>
+						<StatsCard
+							label="Corridas agendadas"
+							value={m.rides.SCHEDULED ?? 0}
+							subtitle={`${m.rides.IN_PROGRESS ?? 0} em curso · ${
+								m.rides.COMPLETED ?? 0
+							} concluídas`}
+							icon={Route}
+							delay={100}
+						/>
+						<StatsCard
+							label="Reservas confirmadas"
+							value={m.bookings.CONFIRMED ?? 0}
+							subtitle={`${m.bookings.REQUESTED ?? 0} por decidir`}
+							icon={Ticket}
+							delay={200}
+						/>
+						<StatsCard
+							label="KYC por rever"
+							value={m.pendingKyc}
+							subtitle={`${m.pendingDriverKyc} motorista · ${
+								m.pendingPassengerKyc
+							} passageiro`}
+							icon={ClipboardCheck}
+							delay={300}
+						/>
+					</>
+				)}
 			</div>
 
-			{isLoading ? (
-				<div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-					{Array.from({ length: 4 }).map((_, i) => (
-						<SkeletonCard key={i} />
-					))}
-				</div>
-			) : (
-				<div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-					<StatsCard
-						label="Utilizadores"
-						value={totalUsers}
-						subtitle="Registados na plataforma"
-						icon={Users}
-						delay={0}
-					/>
-					<StatsCard
-						label="Subscrições Activas"
-						value={totalSubscriptions}
-						subtitle="Planos activos"
-						icon={Wallet}
-						delay={100}
-					/>
-					<StatsCard
-						label="Transcrições"
-						value={totalTranscriptions}
-						subtitle="Total processado"
-						icon={FileText}
-						delay={200}
-					/>
-					<StatsCard
-						label="Pagamentos"
-						value={totalPayments}
-						subtitle="Transacções registadas"
-						icon={CreditCard}
-						delay={300}
-					/>
-				</div>
-			)}
-
-			<div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-				<div className="lg:col-span-2">
+			<div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-3">
+				<div className="lg:col-span-2 rounded-xl border bg-surface p-5 shadow-card">
+					<h3 className="mb-4 text-label font-sansBold">
+						Corridas publicadas — últimos 14 dias
+					</h3>
 					{isLoading ? (
 						<SkeletonChart />
 					) : (
-						<div className="rounded-xl border bg-surface p-5 shadow-card">
-							<div className="mb-1 flex items-center justify-between">
-								<div>
-									<h2 className="text-sm font-medium text-text">
-										Fluxo de Transcrições
-									</h2>
-									<p className="text-xs text-text-secondary">
-										Últimos 7 dias
-									</p>
-								</div>
-							</div>
-							<div className="h-72">
-								<ResponsiveContainer width="100%" height="100%">
-									<AreaChart data={chartData}>
-										<defs>
-											<linearGradient
-												id="routeGradient"
-												x1="0"
-												y1="0"
-												x2="0"
-												y2="1"
-											>
-												<stop
-													offset="0%"
-													stopColor="#FF5A26"
-													stopOpacity={0.3}
-												/>
-												<stop
-													offset="60%"
-													stopColor="#FF5A26"
-													stopOpacity={0.08}
-												/>
-												<stop
-													offset="100%"
-													stopColor="#FF5A26"
-													stopOpacity={0}
-												/>
-											</linearGradient>
-										</defs>
-										<CartesianGrid
-											strokeDasharray="3 3"
-											stroke="var(--border)"
-											vertical={false}
+						<ResponsiveContainer width="100%" height={260}>
+							<AreaChart
+								data={data?.rideFlow ?? []}
+								margin={{
+									top: 8,
+									right: 8,
+									left: -20,
+									bottom: 0,
+								}}
+							>
+								<defs>
+									<linearGradient
+										id="rideGradient"
+										x1="0"
+										y1="0"
+										x2="0"
+										y2="1"
+									>
+										<stop
+											offset="5%"
+											stopColor="var(--primary)"
+											stopOpacity={0.3}
 										/>
-										<XAxis
-											dataKey="date"
-											tick={{
-												fontSize: 11,
-												fill: 'var(--text-secondary)',
-											}}
-											axisLine={false}
-											tickLine={false}
-											interval="preserveStartEnd"
+										<stop
+											offset="95%"
+											stopColor="var(--primary)"
+											stopOpacity={0}
 										/>
-										<YAxis
-											allowDecimals={false}
-											tick={{
-												fontSize: 11,
-												fill: 'var(--text-secondary)',
-											}}
-											axisLine={false}
-											tickLine={false}
-											width={30}
-										/>
-										<Tooltip
-											contentStyle={{
-												background: 'var(--surface)',
-												border: '1px solid var(--border)',
-												borderRadius: '8px',
-												boxShadow:
-													'0 4px 6px -1px rgba(0,0,0,0.06)',
-											}}
-											labelStyle={{
-												color: 'var(--text)',
-											}}
-										/>
-										<Area
-											type="monotone"
-											dataKey="transcricoes"
-											stroke="#FF5A26"
-											strokeWidth={2}
-											fill="url(#routeGradient)"
-											dot={false}
-											activeDot={{
-												r: 4,
-												fill: '#FF5A26',
-												stroke: '#fff',
-												strokeWidth: 2,
-											}}
-										/>
-									</AreaChart>
-								</ResponsiveContainer>
-							</div>
-						</div>
+									</linearGradient>
+								</defs>
+								<CartesianGrid
+									strokeDasharray="3 3"
+									stroke="var(--border)"
+								/>
+								<XAxis
+									dataKey="date"
+									tick={{
+										fontSize: 11,
+										fill: 'var(--text-secondary)',
+									}}
+									tickLine={false}
+									axisLine={false}
+								/>
+								<YAxis
+									allowDecimals={false}
+									tick={{
+										fontSize: 11,
+										fill: 'var(--text-secondary)',
+									}}
+									tickLine={false}
+									axisLine={false}
+								/>
+								<Tooltip
+									contentStyle={{
+										background: 'var(--surface)',
+										border: '1px solid var(--border)',
+										borderRadius: 8,
+										fontSize: 12,
+									}}
+								/>
+								<Area
+									type="monotone"
+									dataKey="count"
+									name="Corridas"
+									stroke="var(--primary)"
+									strokeWidth={2}
+									fill="url(#rideGradient)"
+								/>
+							</AreaChart>
+						</ResponsiveContainer>
 					)}
 				</div>
 
-				<div className="space-y-4">
-					<div className="rounded-xl border bg-surface p-5 shadow-card">
-						<h2 className="mb-3 text-sm font-medium text-text">
-							Acções Rápidas
-						</h2>
-						<div className="space-y-2">
-							{quickActions.map((action) => (
-								<button
-									key={action.label}
-									onClick={action.onClick}
-									className="flex w-full items-center gap-3 rounded-lg p-3 text-left text-sm transition-colors hover:bg-background group"
-								>
-									<div
-										className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${action.color}`}
-									>
-										<action.icon size={18} />
-									</div>
-									<span className="flex-1 font-medium text-text">
-										{action.label}
+				<div className="rounded-xl border bg-surface p-5 shadow-card">
+					<h3 className="mb-4 text-label font-sansBold">
+						A precisar de ti
+					</h3>
+					<div className="space-y-2">
+						{quickActions.map((action) => (
+							<button
+								key={action.to}
+								type="button"
+								onClick={() => navigate(action.to)}
+								className="flex w-full items-center gap-3 rounded-lg border px-3 py-3 text-left transition-colors hover:bg-background"
+							>
+								<action.icon
+									size={18}
+									className="text-primary"
+								/>
+								<span className="flex-1 text-body-small font-sansMedium">
+									{action.label}
+								</span>
+								{action.count > 0 ? (
+									<span className="rounded-full bg-primary px-2 py-0.5 text-[11px] font-sansBold text-white">
+										{action.count}
 									</span>
-									<ArrowRight
-										size={16}
-										className="text-text-secondary opacity-0 transition-opacity group-hover:opacity-100"
-									/>
-								</button>
-							))}
-						</div>
+								) : null}
+								<ArrowRight
+									size={14}
+									className="text-text-secondary"
+								/>
+							</button>
+						))}
 					</div>
 				</div>
 			</div>

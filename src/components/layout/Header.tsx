@@ -6,14 +6,12 @@ import { Menu } from 'lucide-react';
 import { enumLabel, USER_ROLE_LABELS } from '../../lib/enums';
 
 const pathLabels: Record<string, string> = {
-	'': 'Dashboard',
+	'': 'Painel de controlo',
 	users: 'Utilizadores',
-	create: 'Criar',
-	plans: 'Planos',
-	subscriptions: 'Subscrições',
-	transcriptions: 'Transcrições',
-	payments: 'Pagamentos',
-	settings: 'Definições',
+	kyc: 'KYC',
+	vehicles: 'Viaturas',
+	rides: 'Corridas',
+	bookings: 'Reservas',
 	'audit-logs': 'Auditoria',
 };
 

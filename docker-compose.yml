@@ -4,13 +4,13 @@ services:
             context: .
             dockerfile: Dockerfile
             args:
-                VITE_API_URL: ${VITE_API_URL:-https://api.kuzuela.co.ao}
-        container_name: kuzuela-adm
+                VITE_API_URL: ${VITE_API_URL:-https://api.boleia.ao}
+        container_name: boleia-adm
         restart: unless-stopped
         networks:
-            - kuzuela
+            - boleia
 
 networks:
-    kuzuela:
-        name: kuzuela
+    boleia:
+        name: boleia
         external: true

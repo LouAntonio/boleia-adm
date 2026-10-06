@@ -33,11 +33,11 @@ export function Login() {
 					<div className="mb-6 text-center">
 						<img
 							src="/images/logo.png"
-							alt="Kuzuela"
+							alt="Boleia"
 							className="mx-auto h-12 w-12"
 						/>
 						<h1 className="mt-3 text-xl font-bold font-display text-text">
-							Kuzuela
+							Boleia
 						</h1>
 						<p className="mt-0.5 text-sm text-text-secondary">
 							Painel Administrativo
@@ -59,7 +59,7 @@ export function Login() {
 									value={email}
 									onChange={(e) => setEmail(e.target.value)}
 									className="w-full rounded-lg border bg-surface py-2.5 pl-10 pr-4 text-sm text-text outline-none transition-colors placeholder:text-text-secondary focus:border-primary"
-									placeholder="admin@kuzuela.co.ao"
+									placeholder="admin@boleia.ao"
 									required
 								/>
 							</div>

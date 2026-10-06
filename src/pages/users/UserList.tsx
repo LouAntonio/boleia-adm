@@ -1,128 +1,162 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useUsers } from '../../hooks/queries/useUsers';
 import { PageHeader } from '../../components/ui/PageHeader';
-import { DataTable } from '../../components/ui/DataTable';
+import { DataTable, type Column } from '../../components/ui/DataTable';
 import { FilterBar } from '../../components/ui/FilterBar';
 import { Pagination } from '../../components/ui/Pagination';
+import { SearchInput } from '../../components/ui/SearchInput';
 import { StatusBadge } from '../../components/ui/StatusBadge';
-import { format } from 'date-fns';
-import { enumLabel, USER_ROLE_LABELS } from '../../lib/enums';
+import { useUsers } from '../../hooks/queries/useAdmin';
+import { USER_ROLE_LABELS, enumLabel } from '../../lib/enums';
+import type { AdminUser } from '../../types/admin';
+import { Users } from 'lucide-react';
+
+const ROLE_OPTIONS = [
+	{ value: '', label: 'Todos os roles' },
+	...Object.entries(USER_ROLE_LABELS).map(([value, label]) => ({
+		value,
+		label,
+	})),
+];
+
+const fmtDate = (iso: string) =>
+	new Date(iso).toLocaleDateString('pt-PT', {
+		day: '2-digit',
+		month: '2-digit',
+		year: 'numeric',
+	});
 
 export function UserList() {
 	const navigate = useNavigate();
 	const [page, setPage] = useState(1);
+	const [role, setRole] = useState('');
 	const [search, setSearch] = useState('');
-	const [filters, setFilters] = useState<Record<string, string | undefined>>(
-		{},
-	);
-	const limit = 20;
+	const [query, setQuery] = useState('');
 
-	const { data, isLoading } = useUsers({
+	const { data, isLoading, isError } = useUsers({
 		page,
-		limit,
-		search: search || undefined,
-		...filters,
+		limit: 20,
+		role: role || undefined,
+		search: query || undefined,
 	});
-	const result = data ?? { users: [], total: 0 };
-	const users = result.users ?? [];
-	const total = result.total ?? 0;
 
-	const handleSearch = (val: string) => {
-		setSearch(val);
-		setPage(1);
-	};
+	const rows = data?.users ?? [];
+	const total = data?.total ?? 0;
 
-	const handleFilterChange = (key: string, val: string | undefined) => {
-		setFilters((prev) => ({ ...prev, [key]: val }));
-		setPage(1);
-	};
+	const columns: Column<AdminUser>[] = [
+		{
+			key: 'name',
+			label: 'Nome',
+			sortable: true,
+			render: (u) => (
+				<div>
+					<div className="text-body-small font-sansBold">
+						{[u.name, u.surname].filter(Boolean).join(' ')}
+					</div>
+					{u.phone ? (
+						<div className="text-xs text-text-secondary">
+							{u.phone}
+						</div>
+					) : null}
+				</div>
+			),
+		},
+		{ key: 'email', label: 'Email', sortable: true },
+		{
+			key: 'role',
+			label: 'Role',
+			sortable: true,
+			render: (u) => (
+				<StatusBadge
+					status={u.role}
+					label={enumLabel(USER_ROLE_LABELS, u.role)}
+					variant={u.role === 'ADMIN' ? 'warning' : 'neutral'}
+				/>
+			),
+		},
+		{
+			key: 'banned',
+			label: 'Situação',
+			render: (u) =>
+				u.banned ? (
+					<StatusBadge
+						status="BANNED"
+						label="Banido"
+						variant="error"
+					/>
+				) : (
+					<StatusBadge
+						status="ACTIVE"
+						label="Activo"
+						variant="success"
+					/>
+				),
+		},
+		{
+			key: 'createdAt',
+			label: 'Registado',
+			sortable: true,
+			render: (u) => fmtDate(u.createdAt),
+		},
+	];
 
 	return (
 		<div>
 			<PageHeader
 				title="Utilizadores"
-				subtitle="Gestão de contas de utilizadores"
-				actions={
-					<button
-						onClick={() => navigate('/users/create')}
-						className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary-hover"
-					>
-						Novo Utilizador
-					</button>
-				}
+				subtitle="Contas da plataforma"
+				icon={Users}
 			/>
 
-			<FilterBar
-				placeholder="Nome, email..."
-				onSearch={handleSearch}
-				selectFilters={[
-					{
-						key: 'role',
-						label: 'Função',
-						options: [
-							{ label: 'Utilizador', value: 'USER' },
-							{ label: 'Suporte', value: 'SUPPORT' },
-							{ label: 'Admin', value: 'ADMIN' },
-						],
-					},
-				]}
-				filterValues={filters}
-				onFilterChange={handleFilterChange}
-			/>
+			<div className="space-y-3">
+				<SearchInput
+					onSearch={(v) => {
+						setSearch(v);
+						setQuery(v);
+						setPage(1);
+					}}
+					placeholder="Procurar por nome"
+				/>
+				<FilterBar
+					selectFilters={[
+						{ key: 'role', label: 'Role', options: ROLE_OPTIONS },
+					]}
+					filterValues={{ role }}
+					onFilterChange={(_key, value) => {
+						setRole(value ?? '');
+						setPage(1);
+					}}
+				/>
+			</div>
 
-			<DataTable
-				loading={isLoading}
-				columns={[
-					{ key: 'name', label: 'Nome', sortable: true },
-					{ key: 'email', label: 'Email', sortable: true },
-					{
-						key: 'role',
-						label: 'Role',
-						render: (u) => (
-							<StatusBadge
-								status={u.role}
-								label={enumLabel(USER_ROLE_LABELS, u.role)}
-							/>
-						),
-					},
-					{
-						key: 'emailVerified',
-						label: 'Email Verif.',
-						render: (u) => (u.emailVerified ? 'Sim' : 'Não'),
-					},
-					{
-						key: 'activePlan',
-						label: 'Plano Ativo',
-						render: (u) =>
-							u.activePlan ? (
-								<StatusBadge
-									status="ACTIVE"
-									variant="success"
-									label={u.activePlan.name ?? '—'}
-								/>
-							) : (
-								'—'
-							),
-					},
-					{
-						key: 'createdAt',
-						label: 'Criado em',
-						sortable: true,
-						render: (u) =>
-							format(new Date(u.createdAt), 'dd/MM/yyyy'),
-					},
-				]}
-				data={users}
-				onRowClick={(u) => navigate(`/users/${u.id}`)}
-			/>
+			<div className="mt-4">
+				{isError ? (
+					<div className="rounded-xl border border-error/30 bg-error/5 p-4 text-body-small text-error">
+						Não foi possível carregar a lista de utilizadores.
+					</div>
+				) : (
+					<DataTable
+						columns={columns}
+						data={rows}
+						loading={isLoading}
+						onRowClick={(u) => navigate(`/users/${u.id}`)}
+						emptyMessage={
+							search
+								? `Nenhum utilizador para "${search}".`
+								: 'Ainda não há utilizadores.'
+						}
+					/>
+				)}
+			</div>
 
-			<Pagination
-				page={page}
-				limit={limit}
-				total={total}
-				onPageChange={setPage}
-			/>
+			<div className="mt-4">
+				<Pagination
+					page={page}
+					limit={20}
+					total={total}
+					onPageChange={setPage}
+				/>
+			</div>
 		</div>
 	);
 }

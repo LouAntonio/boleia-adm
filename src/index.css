@@ -19,8 +19,13 @@
 	--color-sidebar-hover: var(--sidebar-hover);
 	--color-sidebar-active: var(--sidebar-active);
 	--color-label: var(--label);
-	--font-display: 'Space Grotesk', sans-serif;
-	--font-body: 'Inter', sans-serif;
+	/*
+ * Hanken Grotesk, a mesma família do telemóvel (`mobile/src/store/type.ts`).
+ * Uma só família em toda a plataforma: o painel é a mesma produto visto numa
+ * secretária, e duas famílias fazem-no parecerem dois produtos.
+ */
+	--font-display: 'Hanken Grotesk', sans-serif;
+	--font-body: 'Hanken Grotesk', sans-serif;
 	--font-mono: 'JetBrains Mono', monospace;
 	--radius-sm: 0.375rem;
 	--radius-md: 0.5rem;
@@ -32,44 +37,44 @@
 }
 
 :root {
-	--bg: #f9f9fb;
+	--bg: #f5f7fb;
 	--surface: #ffffff;
-	--text: #1a1a1a;
-	--text-secondary: #4a4a4a;
-	--primary: #ff5a26;
-	--primary-hover: #e04a1e;
-	--secondary: #2c3e50;
-	--accent: #ff5a26;
-	--border: #d1d1d1;
 	--card: #ffffff;
-	--error: #e64a19;
-	--success: #10b981;
-	--warning: #f59e0b;
-	--label: #7a7a7a;
-	--sidebar: #1a1410;
-	--sidebar-hover: #2a1f18;
-	--sidebar-active: #ff5a26;
+	--text: #001536;
+	--text-secondary: #576680;
+	--primary: #0071eb;
+	--primary-hover: #005fc4;
+	--secondary: #001536;
+	--accent: #0071eb;
+	--border: #dbe2ee;
+	--error: #ba303b;
+	--success: #107046;
+	--warning: #b84412;
+	--label: #576680;
+	--sidebar: #001536;
+	--sidebar-hover: #0b2a52;
+	--sidebar-active: #0071eb;
 	color-scheme: light;
 }
 
 .dark {
-	--bg: #0d0d0d;
-	--surface: #1a1a1a;
-	--text: #ffdbcc;
-	--text-secondary: #8e8e8e;
-	--primary: #ff5a26;
-	--primary-hover: #e04a1e;
-	--secondary: #64748b;
-	--accent: #ff5a26;
-	--border: #2a2a2a;
-	--card: #1a1a1a;
-	--error: #ff5a26;
-	--success: #34d399;
-	--warning: #f59e0b;
-	--label: #6b6b6b;
-	--sidebar: #0d0d0d;
-	--sidebar-hover: #1a1410;
-	--sidebar-active: #ff5a26;
+	--bg: #0a1626;
+	--surface: #0f1e33;
+	--card: #0f1e33;
+	--text: #eef3fa;
+	--text-secondary: #93a5bd;
+	--primary: #3d93f0;
+	--primary-hover: #5aa4f3;
+	--secondary: #93a5bd;
+	--accent: #3d93f0;
+	--border: #1d3350;
+	--error: #e0656f;
+	--success: #35b37d;
+	--warning: #e07a4f;
+	--label: #93a5bd;
+	--sidebar: #071224;
+	--sidebar-hover: #0f2540;
+	--sidebar-active: #3d93f0;
 	color-scheme: dark;
 }
 

@@ -1,20 +1,15 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { usePageTitle } from './hooks/usePageTitle';
 import { Layout } from './components/layout/Layout';
 import { Login } from './pages/Login';
 import { Dashboard } from './pages/Dashboard';
 import { UserList } from './pages/users/UserList';
-import { UserCreate } from './pages/users/UserCreate';
 import { UserDetail } from './pages/users/UserDetail';
-import { PlanList } from './pages/plans/PlanList';
-import { PlanCreate } from './pages/plans/PlanCreate';
-import { SubscriptionList } from './pages/subscriptions/SubscriptionList';
-import { TranscriptionList } from './pages/transcriptions/TranscriptionList';
-import { TranscriptionDetail } from './pages/transcriptions/TranscriptionDetail';
-import { PaymentList } from './pages/payments/PaymentList';
-import { PaymentDetail } from './pages/payments/PaymentDetail';
-import { CmsPage } from './pages/settings/CmsPage';
+import { KycList } from './pages/kyc/KycList';
+import { VehicleList } from './pages/vehicles/VehicleList';
+import { RideList } from './pages/rides/RideList';
+import { BookingList } from './pages/bookings/BookingList';
 import { AuditLogList } from './pages/audit-logs/AuditLogList';
 
 function AppContent() {
@@ -38,33 +33,20 @@ function AppContent() {
 					<Route index element={<Dashboard />} />
 
 					<Route path="/users" element={<UserList />} />
-					<Route path="/users/create" element={<UserCreate />} />
 					<Route path="/users/:id" element={<UserDetail />} />
 
-					<Route path="/plans" element={<PlanList />} />
-					<Route path="/plans/create" element={<PlanCreate />} />
-
-					<Route
-						path="/subscriptions"
-						element={<SubscriptionList />}
-					/>
-
-					<Route
-						path="/transcriptions"
-						element={<TranscriptionList />}
-					/>
-					<Route
-						path="/transcriptions/:id"
-						element={<TranscriptionDetail />}
-					/>
-
-					<Route path="/payments" element={<PaymentList />} />
-					<Route path="/payments/:id" element={<PaymentDetail />} />
-
-					<Route path="/settings" element={<CmsPage />} />
-
+					<Route path="/kyc" element={<KycList />} />
+					<Route path="/vehicles" element={<VehicleList />} />
+					<Route path="/rides" element={<RideList />} />
+					<Route path="/bookings" element={<BookingList />} />
 					<Route path="/audit-logs" element={<AuditLogList />} />
 				</Route>
+				{/*
+				 * Roubos de URL. Antes não havia rota `*`: escrever um caminho
+				 * errado dava uma página em branco dentro do `Layout`, sem
+				 * qualquer indicação do que aconteceu.
+				 */}
+				<Route path="*" element={<Navigate to="/" replace />} />
 			</Routes>
 		</>
 	);

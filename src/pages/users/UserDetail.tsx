@@ -1,313 +1,287 @@
 import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { PageHeader } from '../../components/ui/PageHeader';
+import { Modal } from '../../components/ui/Modal';
 import {
 	useUser,
+	useUserSessions,
+	useRevokeUserSessions,
 	useUpdateUserRole,
-	useAssignPlan,
-} from '../../hooks/queries/useUsers';
-import { usePlans } from '../../hooks/queries/usePlans';
-import { PageHeader } from '../../components/ui/PageHeader';
-import { StatusBadge } from '../../components/ui/StatusBadge';
-import { Modal } from '../../components/ui/Modal';
-import { format } from 'date-fns';
-import {
-	enumLabel,
-	USER_ROLE_LABELS,
-	SUBSCRIPTION_STATUS_LABELS,
-	PAYMENT_STATUS_LABELS,
-	PAYMENT_METHOD_LABELS,
-	PAYMENT_TYPE_LABELS,
-} from '../../lib/enums';
+	useBanUser,
+	useUnbanUser,
+} from '../../hooks/queries/useAdmin';
+import { USER_ROLE_LABELS, enumLabel } from '../../lib/enums';
+import { useCan } from '../../lib/permissions';
+import { ArrowLeft, Loader2, Ban, ShieldCheck } from 'lucide-react';
 
-const roles = ['USER', 'SUPPORT', 'ADMIN'];
-const roleLabels: Record<string, string> = {
-	USER: 'Utilizador',
-	SUPPORT: 'Suporte',
-	ADMIN: 'Administrador',
-};
+const ALL_ROLES = Object.keys(USER_ROLE_LABELS);
 
+/**
+ * Detalhe de um utilizador.
+ *
+ * As acções destrutivas — mudar role, banir, revogar sessões — só aparecem a
+ * quem tem a permissão. Esconder o botão não é a protecção (o backend valida
+ * sempre), mas evita um painel que promete acções que iam devolver 403.
+ */
 export function UserDetail() {
 	const { id } = useParams<{ id: string }>();
 	const navigate = useNavigate();
-	const { data: user, isLoading } = useUser(id!);
-	const updateRole = useUpdateUserRole();
-	const assignPlan = useAssignPlan(id!);
-	const { data: plans = [] } = usePlans();
+	const { data: user, isLoading, isError } = useUser(id);
+	const { data: sessions } = useUserSessions(id);
 
-	const [roleModal, setRoleModal] = useState(false);
+	const canAdmin = useCan('administerUsers');
+	const canModerate = useCan('moderate');
+
+	const [roleOpen, setRoleOpen] = useState(false);
+	const [banOpen, setBanOpen] = useState(false);
+	const [reason, setReason] = useState('');
 	const [newRole, setNewRole] = useState('');
-	const [planModal, setPlanModal] = useState(false);
-	const [selectedPlanId, setSelectedPlanId] = useState('');
-	const [durationDays, setDurationDays] = useState('');
 
-	if (isLoading) return <p className="text-text-secondary">A carregar...</p>;
-	if (!user) return <p className="text-error">Utilizador não encontrado.</p>;
+	const updateRole = useUpdateUserRole();
+	const ban = useBanUser();
+	const unban = useUnbanUser();
+	const revokeAll = useRevokeUserSessions();
+
+	if (isLoading) {
+		return (
+			<p className="text-body-small text-text-secondary">A carregar…</p>
+		);
+	}
+
+	if (isError || !user) {
+		return (
+			<div className="rounded-xl border border-error/30 bg-error/5 p-4 text-body-small text-error">
+				Não foi possível carregar este utilizador.
+			</div>
+		);
+	}
+
+	const fullName = [user.name, user.surname].filter(Boolean).join(' ');
 
 	return (
 		<div>
-			<PageHeader
-				title={user.name}
-				subtitle={`ID: ${user.id}`}
-				actions={
-					<div className="flex gap-2">
-						<button
-							onClick={() => navigate('/users')}
-							className="rounded-lg border bg-background px-4 py-2 text-sm"
-						>
-							Voltar
-						</button>
-						<button
-							onClick={() => {
-								setSelectedPlanId('');
-								setDurationDays('');
-								setPlanModal(true);
-							}}
-							className="rounded-lg bg-primary px-4 py-2 text-sm text-white"
-						>
-							Atribuir Plano
-						</button>
-						<button
-							onClick={() => {
-								setNewRole(user.role);
-								setRoleModal(true);
-							}}
-							className="rounded-lg border bg-background px-4 py-2 text-sm"
-						>
-							Alterar Role
-						</button>
-					</div>
-				}
-			/>
+			<button
+				type="button"
+				onClick={() => navigate(-1)}
+				className="mb-4 inline-flex items-center gap-1.5 text-sm font-sansMedium text-text-secondary hover:text-text"
+			>
+				<ArrowLeft size={16} />
+				Voltar
+			</button>
 
-			<div className="grid gap-6 lg:grid-cols-2">
-				<div className="rounded-lg border bg-surface p-5 space-y-3">
-					<h2 className="text-sm font-medium text-text-secondary uppercase tracking-wide">
-						Informações
-					</h2>
-					<DetailRow label="Nome" value={user.name} />
-					<DetailRow label="Email" value={user.email} />
-					<DetailRow
-						label="Role"
-						value={
-							<StatusBadge
-								status={user.role}
-								label={enumLabel(USER_ROLE_LABELS, user.role)}
-							/>
-						}
-					/>
-					<DetailRow
-						label="Email Verificado"
-						value={user.emailVerified ? 'Sim' : 'Não'}
-					/>
-					<DetailRow
-						label="Criado em"
-						value={format(
-							new Date(user.createdAt),
-							'dd/MM/yyyy HH:mm',
-						)}
-					/>
+			<PageHeader title={fullName} subtitle={user.email} />
+
+			<div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+				<div className="rounded-xl border bg-surface p-5 shadow-card lg:col-span-2">
+					<h3 className="mb-4 text-label font-sansBold">Conta</h3>
+					<dl className="space-y-3 text-body-small">
+						<Row label="Nome" value={fullName} />
+						<Row label="Email" value={user.email} />
+						<Row label="Telefone" value={user.phone ?? '—'} />
+						<Row
+							label="Email verificado"
+							value={user.emailVerified ? 'Sim' : 'Não'}
+						/>
+						<Row
+							label="Role"
+							value={enumLabel(USER_ROLE_LABELS, user.role)}
+						/>
+						<Row
+							label="Registado em"
+							value={new Date(user.createdAt).toLocaleDateString(
+								'pt-PT',
+							)}
+						/>
+					</dl>
+
+					{user.banned ? (
+						<div className="mt-4 rounded-lg border border-error/30 bg-error/5 p-3">
+							<div className="text-body-small font-sansBold text-error">
+								Conta banida
+							</div>
+							{user.banReason ? (
+								<p className="mt-1 text-body-xs text-text-secondary">
+									{user.banReason}
+								</p>
+							) : null}
+							{user.banExpires ? (
+								<p className="mt-1 text-body-xs text-text-secondary">
+									Expira a{' '}
+									{new Date(
+										user.banExpires,
+									).toLocaleDateString('pt-PT')}
+								</p>
+							) : null}
+						</div>
+					) : null}
+
+					<div className="mt-5 flex flex-wrap gap-2">
+						{canAdmin ? (
+							<button
+								type="button"
+								onClick={() => {
+									setNewRole(user.role);
+									setRoleOpen(true);
+								}}
+								className="inline-flex min-h-[36px] items-center gap-1.5 rounded-lg border px-3 py-2 text-sm font-sansMedium hover:bg-background"
+							>
+								<ShieldCheck size={15} />
+								Alterar role
+							</button>
+						) : null}
+
+						{canModerate && !user.banned ? (
+							<button
+								type="button"
+								onClick={() => {
+									setReason('');
+									setBanOpen(true);
+								}}
+								className="inline-flex min-h-[36px] items-center gap-1.5 rounded-lg border border-error/40 px-3 py-2 text-sm font-sansMedium text-error hover:bg-error/5"
+							>
+								<Ban size={15} />
+								Banir
+							</button>
+						) : null}
+
+						{canModerate && user.banned ? (
+							<button
+								type="button"
+								onClick={() => unban.mutate(user.id)}
+								disabled={unban.isPending}
+								className="inline-flex min-h-[36px] items-center gap-1.5 rounded-lg bg-success px-3 py-2 text-sm font-sansBold text-white disabled:opacity-50"
+							>
+								Levantar banimento
+							</button>
+						) : null}
+					</div>
 				</div>
 
-				{user._count && (
-					<div className="rounded-lg border bg-surface p-5 space-y-3">
-						<h2 className="text-sm font-medium text-text-secondary uppercase tracking-wide">
-							Estatísticas
-						</h2>
-						<DetailRow
-							label="Transcrições"
-							value={String(user._count.transcriptions ?? 0)}
-						/>
-						<DetailRow
-							label="Pagamentos"
-							value={String(user._count.payments ?? 0)}
-						/>
-					</div>
-				)}
-
-				{user.subscriptions?.length > 0 && (
-					<div className="rounded-lg border bg-surface p-5 space-y-3">
-						<h2 className="text-sm font-medium text-text-secondary uppercase tracking-wide">
-							Subscrições
-						</h2>
-						{user.subscriptions.map((sub: any) => (
-							<div
-								key={sub.id}
-								className="border-b border-border pb-2 last:border-0"
+				<div className="rounded-xl border bg-surface p-5 shadow-card">
+					<div className="mb-4 flex items-center justify-between">
+						<h3 className="text-label font-sansBold">Sessões</h3>
+						{sessions && sessions.total > 0 && canModerate ? (
+							<button
+								type="button"
+								onClick={() => revokeAll.mutate(user.id)}
+								disabled={revokeAll.isPending}
+								className="min-h-[32px] rounded-md border px-2.5 py-1 text-xs font-sansMedium text-error hover:bg-error/5 disabled:opacity-50"
 							>
-								<p className="text-sm font-medium">
-									{sub.plan?.name ?? '—'}
-								</p>
-								<p className="text-xs text-text-secondary">
-									<StatusBadge
-										status={sub.status}
-										label={enumLabel(
-											SUBSCRIPTION_STATUS_LABELS,
-											sub.status,
-										)}
-									/>
-								</p>
-								<p className="text-xs text-text-secondary">
-									{format(
-										new Date(sub.startDate),
-										'dd/MM/yyyy',
-									)}
-									{sub.endDate &&
-										` — ${format(new Date(sub.endDate), 'dd/MM/yyyy')}`}
-								</p>
-							</div>
-						))}
+								Revogar todas
+							</button>
+						) : null}
 					</div>
-				)}
-				{user.payments?.length > 0 && (
-					<div className="rounded-lg border bg-surface p-5 space-y-3 lg:col-span-2">
-						<h2 className="text-sm font-medium text-text-secondary uppercase tracking-wide">
-							Pagamentos ({user.payments.length})
-						</h2>
-						{user.payments.map((p: any) => {
-							const v =
-								p.status === 'SUCCESS'
-									? 'success'
-									: p.status === 'FAILED'
-										? 'error'
-										: p.status === 'PENDING'
-											? 'warning'
-											: 'neutral';
-							return (
-								<div
-									key={p.id}
-									className="flex flex-wrap items-center justify-between gap-2 border-b border-border pb-2 last:border-0"
+
+					{!sessions || sessions.rows.length === 0 ? (
+						<p className="text-body-small text-text-secondary">
+							Sem sessões activas.
+						</p>
+					) : (
+						<ul className="space-y-3">
+							{sessions.rows.map((s) => (
+								<li
+									key={s.id}
+									className="rounded-lg bg-background p-3 text-xs"
 								>
-									<div>
-										<p className="text-sm font-medium">
-											{new Intl.NumberFormat(
-												'pt-AO',
-											).format(Number(p.amount))}{' '}
-											KZ — {p.plan?.name ?? '—'}
-										</p>
-										<p className="text-xs text-text-secondary">
-											{enumLabel(
-												PAYMENT_METHOD_LABELS,
-												p.method,
-											)}
-											{' · '}
-											{enumLabel(
-												PAYMENT_TYPE_LABELS,
-												p.type,
-											)}
-											{' · '}
-											{format(
-												new Date(p.createdAt),
-												'dd/MM/yyyy HH:mm',
-											)}
-										</p>
+									<div className="flex items-center justify-between">
+										<span className="font-mono text-text-secondary">
+											{s.ipAddress ?? 'ip desconhecido'}
+										</span>
+										<span className="text-text-secondary">
+											{new Date(
+												s.lastActiveAt ?? s.createdAt,
+											).toLocaleDateString('pt-PT')}
+										</span>
 									</div>
-									<StatusBadge
-										status={p.status}
-										variant={v as any}
-										label={enumLabel(
-											PAYMENT_STATUS_LABELS,
-											p.status,
-										)}
-									/>
-								</div>
-							);
-						})}
-					</div>
-				)}
+									<p className="mt-1 truncate text-text-secondary">
+										{s.userAgent ??
+											'dispositivo desconhecido'}
+									</p>
+								</li>
+							))}
+						</ul>
+					)}
+				</div>
 			</div>
 
 			<Modal
-				open={roleModal}
-				onClose={() => setRoleModal(false)}
-				title="Alterar Role"
+				open={roleOpen}
+				onClose={() => setRoleOpen(false)}
+				title="Alterar role"
 			>
 				<div className="space-y-4">
-					<div>
-						<label className="block text-sm font-medium mb-1">
-							Novo Role
-						</label>
-						<select
-							value={newRole}
-							onChange={(e) => setNewRole(e.target.value)}
-							className="w-full rounded-lg border bg-surface px-4 py-2 text-sm outline-none focus:border-primary"
-						>
-							{roles.map((r) => (
-								<option key={r} value={r}>
-									{roleLabels[r]}
-								</option>
-							))}
-						</select>
-					</div>
+					<p className="text-body-small text-text-secondary">
+						Mudar o role dá ou tira acesso a este painel e a acções
+						de administração. A alteração fica registada na
+						auditoria.
+					</p>
+					<select
+						value={newRole}
+						onChange={(e) => setNewRole(e.target.value)}
+						className="w-full rounded-lg border bg-surface px-3 py-2.5 text-sm text-text outline-none focus:border-primary"
+					>
+						{ALL_ROLES.map((r) => (
+							<option key={r} value={r}>
+								{enumLabel(USER_ROLE_LABELS, r)}
+							</option>
+						))}
+					</select>
 					<button
+						type="button"
+						disabled={updateRole.isPending || newRole === user.role}
 						onClick={() =>
 							updateRole.mutate(
-								{ id: id!, role: newRole },
-								{ onSuccess: () => setRoleModal(false) },
+								{ userId: user.id, role: newRole },
+								{ onSuccess: () => setRoleOpen(false) },
 							)
 						}
-						className="rounded-lg bg-primary px-4 py-2 text-sm text-white"
+						className="flex w-full items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-sansBold text-white hover:bg-primary-hover disabled:opacity-50"
 					>
+						{updateRole.isPending ? (
+							<Loader2 size={16} className="animate-spin" />
+						) : null}
 						Confirmar
 					</button>
 				</div>
 			</Modal>
 
 			<Modal
-				open={planModal}
-				onClose={() => setPlanModal(false)}
-				title="Atribuir Plano"
+				open={banOpen}
+				onClose={() => setBanOpen(false)}
+				title="Banir utilizador"
 			>
 				<div className="space-y-4">
-					<div>
-						<label className="block text-sm font-medium mb-1">
-							Plano
+					<p className="text-body-small text-text-secondary">
+						A conta deixa de conseguir entrar. Sem data de
+						expiração, o banimento é permanente até ser levantado.
+					</p>
+					<div className="space-y-1.5">
+						<label className="block text-sm font-medium text-text">
+							Motivo
 						</label>
-						<select
-							value={selectedPlanId}
-							onChange={(e) => setSelectedPlanId(e.target.value)}
-							className="w-full rounded-lg border bg-surface px-4 py-2 text-sm outline-none focus:border-primary"
-						>
-							<option value="">Selecionar plano...</option>
-							{plans.map((p: any) => (
-								<option key={p.id} value={p.id}>
-									{p.name} —{' '}
-									{new Intl.NumberFormat('pt-AO').format(
-										Number(p.price),
-									)}{' '}
-									KZ
-								</option>
-							))}
-						</select>
-					</div>
-					<div>
-						<label className="block text-sm font-medium mb-1">
-							Duração (dias){' '}
-							<span className="text-text-secondary font-normal">
-								— opcional
-							</span>
-						</label>
-						<input
-							type="number"
-							min="1"
-							value={durationDays}
-							onChange={(e) => setDurationDays(e.target.value)}
-							placeholder="Usar padrão do plano"
-							className="w-full rounded-lg border bg-surface px-4 py-2 text-sm outline-none focus:border-primary"
+						<textarea
+							value={reason}
+							onChange={(e) => setReason(e.target.value)}
+							rows={3}
+							placeholder="Ex.: documentos de identidade falsificados"
+							className="w-full rounded-lg border bg-surface p-3 text-sm text-text outline-none focus:border-primary"
 						/>
 					</div>
 					<button
-						disabled={!selectedPlanId || assignPlan.isPending}
-						onClick={() => {
-							const payload: any = { planId: selectedPlanId };
-							if (durationDays)
-								payload.durationDays = Number(durationDays);
-							assignPlan.mutate(payload, {
-								onSuccess: () => setPlanModal(false),
-							});
-						}}
-						className="rounded-lg bg-primary px-4 py-2 text-sm text-white disabled:opacity-50"
+						type="button"
+						disabled={ban.isPending || !reason.trim()}
+						onClick={() =>
+							ban.mutate(
+								{ userId: user.id, banReason: reason.trim() },
+								{ onSuccess: () => setBanOpen(false) },
+							)
+						}
+						className="flex w-full items-center justify-center gap-2 rounded-lg bg-error px-4 py-2.5 text-sm font-sansBold text-white hover:opacity-90 disabled:opacity-50"
 					>
-						{assignPlan.isPending ? 'A atribuir...' : 'Confirmar'}
+						{ban.isPending ? (
+							<Loader2 size={16} className="animate-spin" />
+						) : null}
+						Banir conta
 					</button>
 				</div>
 			</Modal>
@@ -315,17 +289,13 @@ export function UserDetail() {
 	);
 }
 
-function DetailRow({
-	label,
-	value,
-}: {
-	label: string;
-	value: React.ReactNode;
-}) {
+function Row({ label, value }: { label: string; value: string }) {
 	return (
-		<div className="flex justify-between border-b border-border pb-2 text-sm">
-			<span className="text-text-secondary">{label}</span>
-			<span className="font-medium">{value}</span>
+		<div className="flex justify-between gap-4 border-b pb-2 last:border-0">
+			<dt className="shrink-0 font-sansMedium text-text-secondary">
+				{label}
+			</dt>
+			<dd className="text-right break-all">{value}</dd>
 		</div>
 	);
 }

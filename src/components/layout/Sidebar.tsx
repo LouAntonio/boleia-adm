@@ -6,12 +6,12 @@ import { enumLabel, USER_ROLE_LABELS } from '../../lib/enums';
 import {
 	LayoutDashboard,
 	Users,
-	Currency,
-	CreditCard,
-	FileText,
-	Wallet,
-	Settings,
+	Car,
+	ClipboardCheck,
+	Route,
+	Ticket,
 	ClipboardList,
+	ShieldAlert,
 	LogOut,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
@@ -23,54 +23,62 @@ interface NavItem {
 	icon: LucideIcon;
 }
 
+/**
+ * Menu do Boleia.
+ *
+ * Os papéis de cada item seguem `back/src/auth/permissions.ts`:
+ * `SUPPORT` é leitura pura, `MODERATOR` acrescenta revisão de KYC e viaturas,
+ * e só o `ADMIN` gere roles e contas. Esconder o item evita a promessa; quem
+ * escreve a URL à mão encontra um 403 do servidor, e a página trata-o.
+ */
 const navItems: NavItem[] = [
 	{
 		label: 'Dashboard',
 		to: '/',
 		icon: LayoutDashboard,
-		roles: ['ADMIN', 'SUPPORT'],
+		roles: ['ADMIN', 'MODERATOR', 'SUPPORT'],
 	},
 	{
 		label: 'Utilizadores',
 		to: '/users',
 		icon: Users,
-		roles: ['ADMIN'],
+		roles: ['ADMIN', 'MODERATOR', 'SUPPORT'],
 	},
 	{
-		label: 'Planos',
-		to: '/plans',
-		icon: Currency,
-		roles: ['ADMIN'],
+		label: 'KYC',
+		to: '/kyc',
+		icon: ClipboardCheck,
+		roles: ['ADMIN', 'MODERATOR', 'SUPPORT'],
 	},
 	{
-		label: 'Subscrições',
-		to: '/subscriptions',
-		icon: CreditCard,
-		roles: ['ADMIN', 'SUPPORT'],
+		label: 'Viaturas',
+		to: '/vehicles',
+		icon: Car,
+		roles: ['ADMIN', 'MODERATOR', 'SUPPORT'],
 	},
 	{
-		label: 'Transcrições',
-		to: '/transcriptions',
-		icon: FileText,
-		roles: ['ADMIN', 'SUPPORT'],
+		label: 'Corridas',
+		to: '/rides',
+		icon: Route,
+		roles: ['ADMIN', 'MODERATOR', 'SUPPORT'],
 	},
 	{
-		label: 'Pagamentos',
-		to: '/payments',
-		icon: Wallet,
-		roles: ['ADMIN'],
-	},
-	{
-		label: 'Definições',
-		to: '/settings',
-		icon: Settings,
-		roles: ['ADMIN'],
+		label: 'Reservas',
+		to: '/bookings',
+		icon: Ticket,
+		roles: ['ADMIN', 'MODERATOR', 'SUPPORT'],
 	},
 	{
 		label: 'Auditoria',
 		to: '/audit-logs',
 		icon: ClipboardList,
-		roles: ['ADMIN', 'SUPPORT'],
+		roles: ['ADMIN', 'MODERATOR'],
+	},
+	{
+		label: 'SOS',
+		to: '/sos',
+		icon: ShieldAlert,
+		roles: ['ADMIN', 'MODERATOR', 'SUPPORT'],
 	},
 ];
 
@@ -96,13 +104,13 @@ export function Sidebar() {
 			>
 				<img
 					src="/images/logo.png"
-					alt="Kuzuela"
+					alt="Boleia"
 					className={`shrink-0 ${sidebarOpen ? 'h-7 w-7' : 'h-6 w-6'}`}
 				/>
 				{sidebarOpen && (
 					<>
 						<span className="text-lg font-bold font-display tracking-tight">
-							Kuzuela
+							Boleia
 						</span>
 						<span className="rounded bg-white/10 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wider text-white/60">
 							Admin

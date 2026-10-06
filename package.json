@@ -1,5 +1,5 @@
 {
-	"name": "Kuzuela-adm-panel",
+	"name": "boleia-adm-panel",
 	"private": true,
 	"version": "0.0.0",
 	"type": "module",
@@ -15,11 +15,9 @@
 		"cipipe": "npm run lint:check && npm run format:check && npm run typecheck && npm run build"
 	},
 	"dependencies": {
-		"@react-google-maps/api": "^2.20.8",
 		"@tailwindcss/vite": "^4.3.1",
 		"@tanstack/react-query": "^5.101.0",
 		"axios": "^1.18.0",
-		"date-fns": "^4.4.0",
 		"lucide-react": "^1.20.0",
 		"react": "^19.2.6",
 		"react-dom": "^19.2.6",
@@ -34,14 +32,15 @@
 		"@types/node": "^24.12.3",
 		"@types/react": "^19.2.14",
 		"@types/react-dom": "^19.2.3",
+		"@typescript-eslint/parser": "^8.71.1",
 		"@vitejs/plugin-react": "^6.0.1",
 		"eslint": "^10.3.0",
 		"eslint-plugin-react-hooks": "^7.1.1",
 		"eslint-plugin-react-refresh": "^0.5.2",
 		"globals": "^17.6.0",
 		"prettier": "^3.8.4",
-		"typescript": "~6.0.2",
-		"typescript-eslint": "^8.59.2",
+		"typescript": "^6.0.3",
+		"typescript-eslint": "^8.71.1",
 		"vite": "^8.0.12"
 	}
 }

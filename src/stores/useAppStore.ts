@@ -8,9 +8,16 @@ interface AppState {
 	setSidebarOpen: (open: boolean) => void;
 }
 
+/**
+ * Estado de UI guardado por utilizador.
+ *
+ * A preferência da sidebar é por pessoa: quem prefere a barra recolhida num ecrã
+ * não a quer imposta ao utilizador seguinte na mesma máquina, e numa secretária
+ * partilhada isso acontece.
+ */
 function getStorageKey(): string {
 	const userId = useAuthStore.getState().user?.id;
-	return `Kuzuela-app-${userId ?? 'anonymous'}`;
+	return `boleia-adm-app-${userId ?? 'anonymous'}`;
 }
 
 const perUserStorage = {
@@ -35,7 +42,7 @@ export const useAppStore = create<AppState>()(
 			setSidebarOpen: (open) => set({ sidebarOpen: open }),
 		}),
 		{
-			name: 'Kuzuela-app',
+			name: 'boleia-adm-app',
 			storage: perUserStorage,
 		},
 	),
