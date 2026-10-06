@@ -1,0 +1,16 @@
+services:
+    adm:
+        build:
+            context: .
+            dockerfile: Dockerfile
+            args:
+                VITE_API_URL: ${VITE_API_URL:-https://api.kuzuela.co.ao}
+        container_name: kuzuela-adm
+        restart: unless-stopped
+        networks:
+            - kuzuela
+
+networks:
+    kuzuela:
+        name: kuzuela
+        external: true

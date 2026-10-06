@@ -1,0 +1,6 @@
+.agents/
+.github/
+dist/
+node_modules/
+public/
+*.local
