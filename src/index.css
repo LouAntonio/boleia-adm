@@ -18,15 +18,83 @@
 	--color-sidebar: var(--sidebar);
 	--color-sidebar-hover: var(--sidebar-hover);
 	--color-sidebar-active: var(--sidebar-active);
-	--color-label: var(--label);
 	/*
- * Hanken Grotesk, a mesma família do telemóvel (`mobile/src/store/type.ts`).
- * Uma só família em toda a plataforma: o painel é a mesma produto visto numa
- * secretária, e duas famílias fazem-no parecerem dois produtos.
- */
+	 * O token `--color-label` foi removido de propósito. Fazia o Tailwind emitir
+	 * `text-label` como utilitário de **cor**, em conflito directo com
+	 * `--text-label`, que é o tamanho. Os cinco usos no painel são
+	 * `<h3 className="text-label font-sansBold">` — queriam tamanho e peso, e
+	 * recebiam cor cinzenta e o tamanho do browser. O valor era idêntico a
+	 * `--text-secondary`, pelo que nenhum dos cinco pretendia a cor.
+	 */
+	/*
+	 * Hanken Grotesk, a mesma família do telemóvel (`mobile/src/store/type.ts`).
+	 * Uma só família em toda a plataforma: o painel é a mesma produto visto numa
+	 * secretária, e duas famílias fazem-no parecerem dois produtos.
+	 */
 	--font-display: 'Hanken Grotesk', sans-serif;
 	--font-body: 'Hanken Grotesk', sans-serif;
 	--font-mono: 'JetBrains Mono', monospace;
+	--font-sans: 'Hanken Grotesk', sans-serif;
+
+	/*
+	 * Pesos no espaço `--font-weight-*`, e não em `--font-*`.
+	 *
+	 * O painel usava `font-sansBold` em 26 sítios, `font-sansMedium` em 11 e
+	 * `font-sansExtraBold` em 1 — nenhuma dessas classes existia, porque só
+	 * havia três entradas em `--font-*`, e nenhuma delas é um peso. O
+	 * resultado era nenhum texto no painel estar bold ou medium: os botões de
+	 * aprovar/recusar, os títulos e as contagens saíam todos com o mesmo
+	 * peso, e nada no ecrã denunciava isso.
+	 *
+	 * O espaço importa: `--font-sansBold: 700` faz o Tailwind emitir
+	 * `font-sansBold{ font-family: 700 }`, porque lê o namespace `--font-*` como
+	 * família de fontes. Num browser `font-family: 700` é uma família
+	 * inexistente e cai no fallback — o mesmo sintoma, outra causa.
+	 *
+	 * Os nomes vêm do sistema do telemóvel (`mobile/src/store/type.ts`), de onde
+	 * o painel copiou a nomenclatura das classes.
+	 */
+	--font-weight-sansMedium: 500;
+	--font-weight-sansBold: 700;
+	--font-weight-sansExtraBold: 800;
+
+	/*
+	 * Escala tipográfica, da mesma fonte do telemóvel
+	 * (`mobile/src/store/type.ts`, `titlePrimary` … `numberLarge`).
+	 *
+	 * O painel usava `text-body` em 35 sítios e `text-label` em 5 sem que
+	 * nenhuma existisse. Pior: `--color-label` estava definido, o que faz o
+	 * Tailwind emitir `text-label` como utilitário de **cor**. `<h3
+	 * className="text-label font-sansBold">` ficava cinzento, do tamanho do
+	 * browser e sem negrito — três coisas erradas de uma vez, e nenhuma
+	 * visível numa revisão de código, porque os nomes das classes são
+	 * plausíveis.
+	 */
+	--text-title-secondary: 22px;
+	--text-title-secondary--line-height: 24px;
+	--text-title-secondary--font-weight: 500;
+	--text-title-tertiary: 18px;
+	--text-title-tertiary--line-height: 20px;
+	--text-title-tertiary--font-weight: 500;
+	--text-label: 16px;
+	--text-label--line-height: 18px;
+	--text-label--font-weight: 500;
+	--text-label-small: 14px;
+	--text-label-small--line-height: 16px;
+	--text-label-small--font-weight: 500;
+	--text-body: 16px;
+	--text-body--line-height: 19px;
+	--text-body--font-weight: 400;
+	--text-body-small: 14px;
+	--text-body-small--line-height: 17px;
+	--text-body-small--font-weight: 400;
+	--text-body-xs: 12px;
+	--text-body-xs--line-height: 17px;
+	--text-body-xs--font-weight: 400;
+	--text-number-large: 40px;
+	--text-number-large--line-height: 44px;
+	--text-number-large--font-weight: 500;
+
 	--radius-sm: 0.375rem;
 	--radius-md: 0.5rem;
 	--radius-lg: 0.75rem;
@@ -50,7 +118,6 @@
 	--error: #ba303b;
 	--success: #107046;
 	--warning: #b84412;
-	--label: #576680;
 	--sidebar: #001536;
 	--sidebar-hover: #0b2a52;
 	--sidebar-active: #0071eb;
@@ -71,7 +138,6 @@
 	--error: #e0656f;
 	--success: #35b37d;
 	--warning: #e07a4f;
-	--label: #93a5bd;
 	--sidebar: #071224;
 	--sidebar-hover: #0f2540;
 	--sidebar-active: #3d93f0;
