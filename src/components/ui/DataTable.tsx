@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { ChevronUp, ChevronDown, SearchX } from 'lucide-react';
+import { ErrorState } from './ErrorState';
 
 export interface Column<T> {
 	key: string;
@@ -14,6 +15,15 @@ interface DataTableProps<T> {
 	loading?: boolean;
 	onRowClick?: (item: T) => void;
 	emptyMessage?: string;
+	/**
+	 * Erro do pedido que encheu esta tabela.
+	 *
+	 * Sem isto, uma falha caía no ramo de `data.length === 0` e o operador via
+	 * "Nenhum registo encontrado" — que afirma que não há nada quando o
+	 * servidor é que não respondeu. Era o caso em cinco páginas.
+	 */
+	error?: unknown;
+	onRetry?: () => void;
 }
 
 function SkeletonRow({ cols }: { cols: number }) {
@@ -34,6 +44,8 @@ export function DataTable<T extends Record<string, any>>({
 	loading,
 	onRowClick,
 	emptyMessage = 'Nenhum registo encontrado.',
+	error,
+	onRetry,
 }: DataTableProps<T>) {
 	const [sortKey, setSortKey] = useState<string | null>(null);
 	const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
@@ -47,15 +59,35 @@ export function DataTable<T extends Record<string, any>>({
 		}
 	};
 
+	/*
+	 * A ordenação é **da página**, não do conjunto todo: o backend pagina e
+	 * não recebe `sortBy`. Clicar em "Preço ↓" reordena as 20 linhas que estão
+	 * no ecrã e, ao mudar de página, a ordem volta à do servidor. Isto é
+	 * limitado, não errado — mas convém que o cabeçalho o diga, senão o
+	 * operador que está a investigar acha que vê os maiores preços da
+	 * plataforma e vê os da página 1.
+	 *
+	 * Colunas cujo valor é um objecto (`driver`, `owner`, `passenger`) não são
+	 * ordenáveis: comparar dois objectos com `<` dá sempre falso, o `cmp`
+	 * saía 0 e o cabeçalho parecia clicável sem acontecer nada.
+	 */
 	const sorted = [...data].sort((a, b) => {
 		if (!sortKey) return 0;
 		const aVal = a[sortKey];
 		const bVal = b[sortKey];
 		if (aVal == null) return 1;
 		if (bVal == null) return -1;
+		// Só primitivos são ordenáveis; objectos e arrays dão `false` em
+		// qualquer comparação.
+		if (typeof aVal !== 'number' && typeof aVal !== 'string') return 0;
+		if (typeof bVal !== 'number' && typeof bVal !== 'string') return 0;
 		const cmp = aVal < bVal ? -1 : aVal > bVal ? 1 : 0;
 		return sortDir === 'asc' ? cmp : -cmp;
 	});
+
+	if (error) {
+		return <ErrorState error={error} onRetry={() => onRetry?.()} />;
+	}
 
 	if (loading) {
 		return (

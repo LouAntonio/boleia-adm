@@ -164,12 +164,25 @@ export function useUserSessions(userId: string | undefined) {
 				`/api/admin/users/${userId}/sessions`,
 				{ params: { limit: 100 } },
 			);
+			/*
+			 * O backend devolve `device`, não `userAgent`
+			 * (`sessions.service.ts`, `formatOwn`: `device: row.userAgent`). O
+			 * painel lia `s.userAgent`, que chegava `undefined`, e o `??` do
+			 * componente caía na fallback sem dar erro nenhum — o painel de
+			 * sessões, que é onde se investiga um sequestro de conta, mostrava
+			 * sempre "dispositivo desconhecido".
+			 *
+			 * `isCurrent` e `impersonatedBy` também vinham e eram ignorados: uma
+			 * sessão de impersonação aparecia como outra qualquer.
+			 */
 			return res.data as Paged<{
 				id: string;
 				ipAddress: string | null;
-				userAgent: string | null;
-				lastActiveAt?: string | null;
+				device: string | null;
 				createdAt: string;
+				expiresAt: string;
+				isCurrent: boolean;
+				impersonatedBy: string | null;
 			}>;
 		},
 		enabled: !!userId,
@@ -252,14 +265,26 @@ export function useAdminBookings(params: AdminListParams = {}) {
 
 export type KycKind = 'driver' | 'passenger';
 
-/** `GET /api/kyc/driver` e `GET /api/kyc/passenger`. */
-export function useKycRequests(kind: KycKind, status?: string) {
+/**
+ * `GET /api/kyc/driver` e `GET /api/kyc/passenger`.
+ *
+ * Paginado, com o envelope `{rows,total,page,limit}` que o resto das
+ * listagens do painel já usava. A versão anterior tratava a resposta como um
+ * array e filtrava com `?.length` — e `length` é `undefined` num envelope, por
+ * isso a fila mostrava-se sempre vazia sem qualquer erro.
+ *
+ * A fila traz `biNumber`, o número de BI em claro, de cada pedido. É o que é
+ * preciso para decidir, e a paginação é o que impede que um pedido traga a
+ * fila inteira num só `GET`.
+ */
+export function useKycRequests(kind: KycKind, status?: string, page = 1) {
 	return useQuery({
-		queryKey: ['kyc', kind, status],
+		queryKey: ['kyc', kind, status, page],
 		queryFn: async () => {
-			const res = await apiClient.get<KycRequest[]>(`/api/kyc/${kind}`, {
-				params: { status },
-			});
+			const res = await apiClient.get<Paged<KycRequest>>(
+				`/api/kyc/${kind}`,
+				{ params: { status, page } },
+			);
 			return res.data;
 		},
 	});

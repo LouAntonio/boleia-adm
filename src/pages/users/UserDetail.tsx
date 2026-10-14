@@ -11,6 +11,7 @@ import {
 	useUnbanUser,
 } from '../../hooks/queries/useAdmin';
 import { USER_ROLE_LABELS, enumLabel } from '../../lib/enums';
+import { fmtDate } from '../../lib/format';
 import { useCan } from '../../lib/permissions';
 import { ArrowLeft, Loader2, Ban, ShieldCheck } from 'lucide-react';
 
@@ -88,9 +89,7 @@ export function UserDetail() {
 						/>
 						<Row
 							label="Registado em"
-							value={new Date(user.createdAt).toLocaleDateString(
-								'pt-PT',
-							)}
+							value={fmtDate(user.createdAt)}
 						/>
 					</dl>
 
@@ -106,10 +105,7 @@ export function UserDetail() {
 							) : null}
 							{user.banExpires ? (
 								<p className="mt-1 text-body-xs text-text-secondary">
-									Expira a{' '}
-									{new Date(
-										user.banExpires,
-									).toLocaleDateString('pt-PT')}
+									Expira a {fmtDate(user.banExpires)}
 								</p>
 							) : null}
 						</div>
@@ -183,19 +179,43 @@ export function UserDetail() {
 									key={s.id}
 									className="rounded-lg bg-background p-3 text-xs"
 								>
-									<div className="flex items-center justify-between">
+									<div className="flex items-center justify-between gap-2">
 										<span className="font-mono text-text-secondary">
 											{s.ipAddress ?? 'ip desconhecido'}
 										</span>
-										<span className="text-text-secondary">
-											{new Date(
-												s.lastActiveAt ?? s.createdAt,
-											).toLocaleDateString('pt-PT')}
+										<span className="flex items-center gap-2">
+											{/*
+											 * Uma sessão de impersonação é o sinal mais
+											 * grave que esta lista pode mostrar, e
+											 * estava a passar despercebida: o backend
+											 * devolvia `impersonatedBy` e o painel
+											 * ignorava-o.
+											 */}
+											{s.impersonatedBy ? (
+												<span className="rounded bg-error/10 px-1.5 py-0.5 font-sansMedium text-error">
+													impersonada
+												</span>
+											) : null}
+											{s.isCurrent ? (
+												<span className="rounded bg-brand/10 px-1.5 py-0.5 font-sansMedium text-brand">
+													sessão actual
+												</span>
+											) : null}
+											<span className="text-text-secondary">
+												{fmtDate(s.createdAt)}
+											</span>
 										</span>
 									</div>
+									{/*
+									 * `device`, não `userAgent`: é assim que o backend
+									 * nomeia o campo (`sessions.service.ts`, `formatOwn`).
+									 * O nome antigo nunca existiu nesta resposta, por isso
+									 * esta lista mostrava "dispositivo desconhecido" em
+									 * todas as linhas — inclusive na que se estava a
+									 * investigar.
+									 */}
 									<p className="mt-1 truncate text-text-secondary">
-										{s.userAgent ??
-											'dispositivo desconhecido'}
+										{s.device ?? 'dispositivo desconhecido'}
 									</p>
 								</li>
 							))}

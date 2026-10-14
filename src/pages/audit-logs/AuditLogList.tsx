@@ -50,7 +50,7 @@ export function AuditLogList() {
 	const [selected, setSelected] = useState<AuditEntry | null>(null);
 
 	const { data: actions } = useAuditActions();
-	const { data, isLoading } = useAuditLogs({
+	const { data, isLoading, error, refetch } = useAuditLogs({
 		page,
 		limit: 30,
 		action: action || undefined,
@@ -231,6 +231,8 @@ export function AuditLogList() {
 					columns={columns}
 					data={rows}
 					loading={isLoading}
+					error={error}
+					onRetry={() => refetch()}
 					emptyMessage="Ainda não há acções registadas."
 				/>
 			</div>

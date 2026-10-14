@@ -44,7 +44,7 @@ export function VehicleList() {
 	const canReview = useCan('moderate');
 	const review = useReviewVehicle();
 
-	const { data, isLoading } = useAdminVehicles({
+	const { data, isLoading, error, refetch } = useAdminVehicles({
 		page,
 		limit: 20,
 		status: status || undefined,
@@ -190,6 +190,8 @@ export function VehicleList() {
 					columns={columns}
 					data={rows}
 					loading={isLoading}
+					error={error}
+					onRetry={() => refetch()}
 					emptyMessage={
 						search
 							? `Nenhuma viatura para "${search}".`

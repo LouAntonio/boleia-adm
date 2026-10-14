@@ -47,7 +47,7 @@ export function BookingList() {
 	const [page, setPage] = useState(1);
 	const [status, setStatus] = useState('');
 
-	const { data, isLoading } = useAdminBookings({
+	const { data, isLoading, error, refetch } = useAdminBookings({
 		page,
 		limit: 20,
 		status: status || undefined,
@@ -152,6 +152,8 @@ export function BookingList() {
 					columns={columns}
 					data={rows}
 					loading={isLoading}
+					error={error}
+					onRetry={() => refetch()}
 					emptyMessage="Ainda não há reservas."
 				/>
 			</div>

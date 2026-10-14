@@ -20,13 +20,32 @@ apiClient.interceptors.request.use((config: InternalAxiosRequestConfig) => {
 	return config;
 });
 
+/**
+ * Rotas em que um 401 é mensagem de formulário e não sessão morta.
+ *
+ * A exclusão anterior era `!url.includes('/api/auth/')`, o que protectava o
+ * login às cegas — e também `list-users`, `get-user`, `set-role`, `ban-user` e
+ * `unban-user`, que vivem em `/api/auth/admin/*`. Um token expirado numa
+ * dessas devolvia 401 sem nunca limpar a store nem emitir o evento: o
+ * operador ficava com um painel "autenticado" cujas listas davam sempre
+ * vazio, sem qualquer indicação de que a sessão tinha morrido.
+ *
+ * A lista é explícita de propósito: o que não entra aqui, trata o 401 como
+ * o que é.
+ */
+const FORM_LEVEL_401 = ['/api/auth/sign-in', '/api/auth/sign-up'];
+
+function isAuthFormRequest(url: string): boolean {
+	return FORM_LEVEL_401.some((path) => url.includes(path));
+}
+
 apiClient.interceptors.response.use(
 	(res) => res,
 	(error) => {
 		const status = error?.response?.status;
 		const url = error?.config?.url ?? '';
 
-		if (status === 401 && !url.includes('/api/auth/')) {
+		if (status === 401 && !isAuthFormRequest(url)) {
 			// A sessão expirou ou foi revogada. Um `window.location.href`
 			// descartava o estado do router e recarregava a aplicação inteira;
 			// um evento é mais limpo e deixa o `Login` tratar do redireccionamento.

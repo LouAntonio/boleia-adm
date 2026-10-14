@@ -11,7 +11,6 @@ import {
 	Route,
 	Ticket,
 	ClipboardList,
-	ShieldAlert,
 	LogOut,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
@@ -26,10 +25,22 @@ interface NavItem {
 /**
  * Menu do Boleia.
  *
- * Os papéis de cada item seguem `back/src/auth/permissions.ts`:
- * `SUPPORT` é leitura pura, `MODERATOR` acrescenta revisão de KYC e viaturas,
- * e só o `ADMIN` gere roles e contas. Esconder o item evita a promessa; quem
- * escreve a URL à mão encontra um 403 do servidor, e a página trata-o.
+ * Os papéis de cada item são copiados de `back/src/auth/permissions.ts`, e
+ * não estimados: um item aparecer para um papel que o servidor recusa é pior
+ * do que o item não existir. Já aconteceu nos dois sentidos.
+ *
+ * - **KYC** exige `KYC_REVIEW` (`kyc: list, get, review, approve, reject`). O
+ *   SUPPORT tem só `list` e `get`, por isso viajava um `403` — e a página, que
+ *   não tem ramo de erro, mostrava-lhe a fila vazia.
+ * - **Auditoria** exige `AUDIT_READ` (`user: list`). O SUPPORT tem `user: get,
+ *   list`, portanto pode lê-la. Escondê-la de quem tem permissão não é
+ *   prudência, é só atrapalhar.
+ * - **SOS** foi removido: não existe rota `/sos` nem endpoint de listagem de
+ *   `SosEvent`. O item levava a um `path="*"` que reenviava para o dashboard,
+ *   sem explicação. O `SosEvent` continua no esquema, sem código.
+ *
+ * Esconder o item evita a promessa; quem escreve a URL à mão encontra um 403
+ * do servidor.
  */
 const navItems: NavItem[] = [
 	{
@@ -48,7 +59,7 @@ const navItems: NavItem[] = [
 		label: 'KYC',
 		to: '/kyc',
 		icon: ClipboardCheck,
-		roles: ['ADMIN', 'MODERATOR', 'SUPPORT'],
+		roles: ['ADMIN', 'MODERATOR'],
 	},
 	{
 		label: 'Viaturas',
@@ -72,12 +83,6 @@ const navItems: NavItem[] = [
 		label: 'Auditoria',
 		to: '/audit-logs',
 		icon: ClipboardList,
-		roles: ['ADMIN', 'MODERATOR'],
-	},
-	{
-		label: 'SOS',
-		to: '/sos',
-		icon: ShieldAlert,
 		roles: ['ADMIN', 'MODERATOR', 'SUPPORT'],
 	},
 ];

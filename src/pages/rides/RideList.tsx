@@ -48,7 +48,7 @@ export function RideList() {
 	const [page, setPage] = useState(1);
 	const [status, setStatus] = useState('');
 
-	const { data, isLoading } = useAdminRides({
+	const { data, isLoading, error, refetch } = useAdminRides({
 		page,
 		limit: 20,
 		status: status || undefined,
@@ -148,6 +148,8 @@ export function RideList() {
 					columns={columns}
 					data={rows}
 					loading={isLoading}
+					error={error}
+					onRetry={() => refetch()}
 					emptyMessage="Ainda não há corridas publicadas."
 				/>
 			</div>

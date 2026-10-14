@@ -53,10 +53,14 @@ export function KycList() {
 	const canReview = useCan('moderate');
 	const review = useReviewKyc();
 
-	const { data: requests, isLoading } = useKycRequests(
-		kind,
-		status || undefined,
-	);
+	const {
+		data: page,
+		isLoading,
+		isError,
+		error,
+		refetch,
+	} = useKycRequests(kind, status || undefined);
+	const requests = page?.rows ?? [];
 
 	const submit = () => {
 		if (!deciding) return;
@@ -179,7 +183,7 @@ export function KycList() {
 			/>
 
 			<div className="mt-4">
-				{!isLoading && requests?.length === 0 ? (
+				{!isLoading && !isError && requests.length === 0 ? (
 					<EmptyState
 						icon={CheckCircle2}
 						title="Nada para rever"
@@ -188,8 +192,10 @@ export function KycList() {
 				) : (
 					<DataTable
 						columns={columns}
-						data={requests ?? []}
+						data={requests}
 						loading={isLoading}
+						error={error}
+						onRetry={() => refetch()}
 						emptyMessage="Não há pedidos com este estado."
 					/>
 				)}
