@@ -1,10 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import apiClient from '../../lib/axios';
+import { authClient, unwrap } from '../../lib/auth-client';
 import type {
 	AdminBooking,
 	AdminRide,
 	AdminStats,
+	AdminUser,
 	AdminVehicle,
 	AuditEntry,
 	KycRequest,
@@ -32,6 +34,50 @@ const messages = {
 
 // ---------- Utilizadores (plugin admin do better-auth) ----------
 
+/** Data como string, seja o que o servidor mandou. */
+function isoOrEmpty(value: unknown): string {
+	if (value instanceof Date) return value.toISOString();
+	if (typeof value === 'string' && value.length > 0) return value;
+	return '';
+}
+
+/**
+ * O utilizador do plugin `admin`, na forma que o painel consome.
+ *
+ * Duas diferenças, ambas reais:
+ *
+ * - As datas chegam como `Date` no tipo do `better-auth` (ele pressupõe que o
+ *   cliente as sabe converter) mas são strings em JSON. O `fmtDate` do painel
+ *   quer string.
+ * - `surname` e `phone` são `additionalFields` do servidor. Estão na resposta —
+ *   o backend envia o utilizador inteiro — mas o tipo `UserWithRole` do plugin
+ *   `admin` é construído sobre o `User` base e não os inclui. Sem os declarar,
+ *   o detalhe do utilizador mostrava o nome completo e o telefone vazios.
+ *
+ * O `role` fica como `string` e não como o par de chaves que o `adminClient()`
+ * assume: o backend usa `USER`/`ADMIN`/`MODERATOR`/`SUPPORT`
+ * (`back/src/auth/auth.ts:227`), não os dois roles por omissão da biblioteca.
+ * Quem valida é o servidor; aqui é apenas o que o painel mostra.
+ */
+function toAdminUser(raw: unknown): AdminUser {
+	const u = (raw ?? {}) as Record<string, unknown>;
+	return {
+		id: String(u.id ?? ''),
+		name: String(u.name ?? ''),
+		surname: (u.surname as string | null) ?? null,
+		email: String(u.email ?? ''),
+		emailVerified: Boolean(u.emailVerified),
+		image: (u.image as string | null) ?? null,
+		phone: (u.phone as string | null) ?? null,
+		role: String(u.role ?? 'USER'),
+		banned: (u.banned as boolean | null) ?? null,
+		banReason: (u.banReason as string | null) ?? null,
+		banExpires: (u.banExpires as string | null) ?? null,
+		createdAt: isoOrEmpty(u.createdAt),
+		updatedAt: isoOrEmpty(u.updatedAt) || undefined,
+	};
+}
+
 export interface UserListParams {
 	page?: number;
 	limit?: number;
@@ -45,11 +91,12 @@ export interface UserListParams {
 }
 
 /**
- * `GET /api/auth/admin/list-users`
+ * `authClient.admin.listUsers()` → `GET /api/auth/admin/list-users`
  *
  * Usa paginação por `offset` (não por página): é o que o plugin expõe. O
  * `Pagination` do kit de UI é por página, por isso a conversão acontece aqui e
- * não na página.
+ * não na página. A resposta continua a ser `{ users, total, limit, offset }`,
+ * tal como o `axios` devolvia — a forma não mudou, só quem a traz.
  */
 export function useUsers(params: UserListParams = {}) {
 	const limit = params.limit ?? 20;
@@ -58,10 +105,9 @@ export function useUsers(params: UserListParams = {}) {
 	return useQuery({
 		queryKey: ['users', params],
 		queryFn: async () => {
-			const res = await apiClient.get<UserListResponse>(
-				'/api/auth/admin/list-users',
-				{
-					params: {
+			const res = await unwrap(
+				authClient.admin.listUsers({
+					query: {
 						limit,
 						offset: (page - 1) * limit,
 						searchValue: params.search || undefined,
@@ -70,22 +116,30 @@ export function useUsers(params: UserListParams = {}) {
 						filterValue: params.role || undefined,
 						sortDirection: params.sortDirection,
 					},
-				},
+				}),
 			);
-			return res.data;
+			return {
+				...res,
+				users: (res.users ?? []).map(toAdminUser),
+			} as UserListResponse;
 		},
 	});
 }
 
+/**
+ * Detalhe de um utilizador.
+ *
+ * `getUser` devolve **o utilizador directamente**, não um envelope — confirmado
+ * pelo tipo que o `adminClient` infere. O `UserDetail` lê `user.name` sobre o
+ * resultado desta query.
+ */
 export function useUser(id: string | undefined) {
 	return useQuery({
 		queryKey: ['users', id],
-		queryFn: async () => {
-			const res = await apiClient.get('/api/auth/admin/get-user', {
-				params: { id },
-			});
-			return res.data;
-		},
+		queryFn: () =>
+			unwrap(
+				authClient.admin.getUser({ query: { id: id as string } }),
+			).then(toAdminUser),
 		enabled: !!id,
 		retry: false,
 	});
@@ -100,13 +154,24 @@ export function useUser(id: string | undefined) {
 export function useUpdateUserRole() {
 	const queryClient = useQueryClient();
 	return useMutation({
-		mutationFn: async (input: { userId: string; role: string }) => {
-			const res = await apiClient.post('/api/auth/admin/set-role', {
-				userId: input.userId,
-				role: input.role,
-			});
-			return res.data;
-		},
+		mutationFn: (input: { userId: string; role: string }) =>
+			unwrap(
+				authClient.admin.setRole({
+					userId: input.userId,
+					/*
+					 * O tipo do `adminClient()` sem opções Assume os dois roles
+					 * por omissão da biblioteca, `user` e `admin`. Os deste
+					 * produto são `USER`/`ADMIN`/`MODERATOR`/`SUPPORT`
+					 * (`back/src/auth/auth.ts:227`). Declarar os roles aqui
+					 * seria copiar o `ac` e o mapa de roles do servidor para o
+					 * painel — duas listas de permissões para manter em
+					 * sincronia, que é o que `permissions.ts` avisa que dá
+					 * problemas. O servidor valida o role; este `as` só evita
+					 * que o painel não aceite escrever o que o servidor aceitou.
+					 */
+					role: input.role as 'user',
+				}),
+			),
 		onSuccess: () => {
 			queryClient.invalidateQueries({ queryKey: ['users'] });
 			toast.success('Role actualizado');
@@ -118,18 +183,18 @@ export function useUpdateUserRole() {
 export function useBanUser() {
 	const queryClient = useQueryClient();
 	return useMutation({
-		mutationFn: async (input: {
+		mutationFn: (input: {
 			userId: string;
 			banReason?: string;
 			banExpiresIn?: number;
-		}) => {
-			const res = await apiClient.post('/api/auth/admin/ban-user', {
-				userId: input.userId,
-				banReason: input.banReason,
-				banExpiresIn: input.banExpiresIn,
-			});
-			return res.data;
-		},
+		}) =>
+			unwrap(
+				authClient.admin.banUser({
+					userId: input.userId,
+					banReason: input.banReason,
+					banExpiresIn: input.banExpiresIn,
+				}),
+			),
 		onSuccess: () => {
 			queryClient.invalidateQueries({ queryKey: ['users'] });
 			toast.success('Utilizador banido');
@@ -141,12 +206,8 @@ export function useBanUser() {
 export function useUnbanUser() {
 	const queryClient = useQueryClient();
 	return useMutation({
-		mutationFn: async (userId: string) => {
-			const res = await apiClient.post('/api/auth/admin/unban-user', {
-				userId,
-			});
-			return res.data;
-		},
+		mutationFn: (userId: string) =>
+			unwrap(authClient.admin.unbanUser({ userId })),
 		onSuccess: () => {
 			queryClient.invalidateQueries({ queryKey: ['users'] });
 			toast.success('Banimento levantado');

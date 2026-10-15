@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { useLogin } from '../hooks/useAuth';
-import { useAuthStore } from '../stores/useAuthStore';
+import { useLogin, authMessage } from '../hooks/useAuth';
+import { authClient } from '../lib/auth-client';
 import { Navigate } from 'react-router-dom';
 import { LogIn, Loader2, Mail, Lock, Eye, EyeOff } from 'lucide-react';
 
@@ -9,9 +9,11 @@ export function Login() {
 	const [password, setPassword] = useState('');
 	const [showPassword, setShowPassword] = useState(false);
 	const login = useLogin();
-	const token = useAuthStore((s) => s.token);
+	// Já não há token em `localStorage` para ler de relance: a sessão vive num
+	// cookie que o JavaScript não vê, e só o servidor responde se é válida.
+	const { data: session, isPending } = authClient.useSession();
 
-	if (token) {
+	if (!isPending && session) {
 		return <Navigate to="/" replace />;
 	}
 
@@ -124,8 +126,10 @@ export function Login() {
 
 					{login.isError && (
 						<p className="mt-4 animate-fade-in rounded-lg bg-error/10 p-3 text-center text-sm text-error">
-							{(login.error as any)?.response?.data?.message ??
-								'Erro ao fazer login. Verifique as credenciais.'}
+							{authMessage(
+								login.error,
+								'Erro ao fazer login. Verifique as credenciais.',
+							)}
 						</p>
 					)}
 				</div>
