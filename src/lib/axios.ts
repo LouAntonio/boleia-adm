@@ -1,6 +1,5 @@
 import axios from 'axios';
 import type { AxiosInstance } from 'axios';
-import { authClient } from './auth-client';
 import { useAuthStore } from '../stores/useAuthStore';
 
 const apiClient: AxiosInstance = axios.create({
@@ -27,17 +26,19 @@ apiClient.interceptors.response.use(
 		const url = error?.config?.url ?? '';
 
 		/*
-		 * Um 401 numa rota da aplicação é uma sessão morta. Quem a termina é
-		 * o `authClient`, não este ficheiro: é o dono da sessão, e termina-la
-		 * aqui deixaria duas autoridades a decidir o mesmo assunto — o
-		 * `useSession()` do `Layout` e este interceptor.
+		 * Um 401 numa rota da aplicação significa que a sessão não vale. **Não se
+		 * revoga aqui**: um 401 é um sinal, não um veredicto. Uma falha de rede
+		 * ou um backend a reiniciar dão um sem que a sessão esteja morta, e
+		 * revogar por causa disso tirava o operador de dentro do painel — que
+		 * depois nem se lembrava de ter estado dentro. Quem decide é o
+		 * `useSession()` do `Layout`, que pergunta ao servidor; o cookie
+		 * inválido expira sozinho e é substituído no login seguinte.
 		 *
 		 * O evento continua a ser emitido para o `Layout`, que é quem sabe
 		 * redireccionar para o login com o `replace` certo.
 		 */
 		if (status === 401 && !url.includes('/api/auth/')) {
 			useAuthStore.getState().logout();
-			void authClient.signOut().catch(() => {});
 			window.dispatchEvent(new CustomEvent('boleia:unauthorised'));
 		}
 
