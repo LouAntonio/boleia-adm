@@ -107,8 +107,17 @@ export interface AdminBooking {
 export interface KycRequest {
 	id: string;
 	userId: string;
-	fullName: string;
-	biNumber: string;
+	/**
+	 * Nome da conta que submeteu os documentos.
+	 *
+	 * O KYC é só documentos — não há nome nem número de BI escritos no
+	 * formulário. O painel identifica o pedido pela conta, e o revisor
+	 * confere o resto na fotografia do BI.
+	 *
+	 * Os dois campos podem vir vazios: o registo aceita nome e apelido em
+	 * branco (entra-se por telefone).
+	 */
+	user: { name: string | null; surname: string | null };
 	status: string;
 	submissionDate: string;
 }

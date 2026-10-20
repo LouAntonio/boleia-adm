@@ -36,6 +36,21 @@ const fmtDate = (iso: string) =>
 	});
 
 /**
+ * O nome que identifica o pedido vem da conta, não do formulário de KYC.
+ *
+ * Pode estar vazio: o registo é telefone-primeiro e aceita nome e apelido em
+ * branco. Nesse caso mostra-se um rótulo neutro e o id da conta, que é o que
+ * ainda distingue dois pedidos sem nome.
+ */
+function accountName(request: KycRequest): string {
+	const name = [request.user?.name, request.user?.surname]
+		.filter(Boolean)
+		.join(' ')
+		.trim();
+	return name || 'Conta sem nome';
+}
+
+/**
  * Fila de revisão de KYC.
  *
  * Aprovar e recusar só aparece a quem tem `kyc:['approve','reject']` — o
@@ -85,15 +100,19 @@ export function KycList() {
 
 	const columns: Column<KycRequest>[] = [
 		{
-			key: 'fullName',
-			label: 'Nome',
+			key: 'user',
+			label: 'Conta',
 			render: (r) => (
-				<span className="font-sansBold text-body-small">
-					{r.fullName}
-				</span>
+				<div>
+					<div className="font-sansBold text-body-small">
+						{accountName(r)}
+					</div>
+					<div className="text-xs text-text-secondary">
+						{r.userId}
+					</div>
+				</div>
 			),
 		},
-		{ key: 'biNumber', label: 'BI' },
 		{
 			key: 'status',
 			label: 'Estado',
@@ -214,10 +233,10 @@ export function KycList() {
 					<div className="space-y-4">
 						<div className="rounded-lg bg-background p-3 text-body-small">
 							<div className="font-sansBold">
-								{deciding.request.fullName}
+								{accountName(deciding.request)}
 							</div>
 							<div className="text-text-secondary">
-								BI {deciding.request.biNumber}
+								{deciding.request.userId}
 							</div>
 						</div>
 
@@ -240,11 +259,10 @@ export function KycList() {
 							</div>
 						) : (
 							<p className="text-body-small text-text-secondary">
-								Ao aprovar, o {deciding.request.fullName} passa
-								a poder publicar corridas
+								Ao aprovar, esta conta passa a poder{' '}
 								{kind === 'driver'
-									? ''
-									: ' e a reservar lugares'}
+									? 'publicar corridas'
+									: 'reservar lugares'}
 								.
 							</p>
 						)}

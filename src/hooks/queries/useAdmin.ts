@@ -334,9 +334,10 @@ export type KycKind = 'driver' | 'passenger';
  * array e filtrava com `?.length` — e `length` é `undefined` num envelope, por
  * isso a fila mostrava-se sempre vazia sem qualquer erro.
  *
- * A fila traz `biNumber`, o número de BI em claro, de cada pedido. É o que é
- * preciso para decidir, e a paginação é o que impede que um pedido traga a
- * fila inteira num só `GET`.
+ * A fila identifica cada pedido pela conta (`user.name`/`surname`) e traz a
+ * data de submissão. O que se revê são as fotografias dos documentos, que
+ * vivem em `media`; não há nome nem número de BI escritos à mão. A paginação é
+ * o que impede que um pedido traga a fila inteira num só `GET`.
  */
 export function useKycRequests(kind: KycKind, status?: string, page = 1) {
 	return useQuery({
