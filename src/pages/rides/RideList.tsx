@@ -1,11 +1,14 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { PageHeader } from '../../components/ui/PageHeader';
 import { DataTable, type Column } from '../../components/ui/DataTable';
 import { FilterBar } from '../../components/ui/FilterBar';
 import { Pagination } from '../../components/ui/Pagination';
 import { StatusBadge } from '../../components/ui/StatusBadge';
+import { RideDetailModal } from './RideDetailModal';
 import { useAdminRides } from '../../hooks/queries/useAdmin';
 import { RIDE_STATUS_LABELS, enumLabel } from '../../lib/enums';
+import { fmtDateTime, fmtKz } from '../../lib/format';
 import type { AdminRide } from '../../types/admin';
 import { Route } from 'lucide-react';
 
@@ -17,21 +20,6 @@ const STATUS_OPTIONS = [
 	{ value: 'CANCELLED', label: RIDE_STATUS_LABELS.CANCELLED },
 ];
 
-const kz = new Intl.NumberFormat('pt-AO', {
-	style: 'currency',
-	currency: 'AOA',
-	maximumFractionDigits: 0,
-});
-
-const fmtDateTime = (iso: string) =>
-	new Date(iso).toLocaleString('pt-PT', {
-		day: '2-digit',
-		month: '2-digit',
-		year: '2-digit',
-		hour: '2-digit',
-		minute: '2-digit',
-	});
-
 /**
  * Todas as corridas da plataforma.
  *
@@ -40,13 +28,15 @@ const fmtDateTime = (iso: string) =>
  * que uma corrida cancelada de ontem — exactamente a que um administrador
  * vai querer investigar — não aparecia.
  *
- * Esta página é só de leitura. Não há accões de escrita: cancelar a corrida de
- * outra pessoa não existe no backend, e um botão que devolvesse 404 seria pior
- * que não o ter.
+ * Clicar na linha abre o itinerário, o motorista e a viatura. Esta página
+ * continua só de leitura: cancelar a corrida de outra pessoa não existe no
+ * backend, e um botão que devolvesse 404 seria pior que não o ter.
  */
 export function RideList() {
+	const navigate = useNavigate();
 	const [page, setPage] = useState(1);
 	const [status, setStatus] = useState('');
+	const [selected, setSelected] = useState<AdminRide | null>(null);
 
 	const { data, isLoading, error, refetch } = useAdminRides({
 		page,
@@ -101,9 +91,7 @@ export function RideList() {
 			label: 'Preço',
 			sortable: true,
 			render: (r) => (
-				<span className="text-body-small">
-					{kz.format(r.pricePerSeat)}
-				</span>
+				<span className="text-body-small">{fmtKz(r.pricePerSeat)}</span>
 			),
 		},
 		{
@@ -150,6 +138,7 @@ export function RideList() {
 					loading={isLoading}
 					error={error}
 					onRetry={() => refetch()}
+					onRowClick={(ride) => setSelected(ride)}
 					emptyMessage="Ainda não há corridas publicadas."
 				/>
 			</div>
@@ -162,6 +151,14 @@ export function RideList() {
 					onPageChange={setPage}
 				/>
 			</div>
+
+			<RideDetailModal
+				ride={selected}
+				onClose={() => setSelected(null)}
+				onOpenBookings={(rideId) =>
+					navigate(`/bookings?rideId=${encodeURIComponent(rideId)}`)
+				}
+			/>
 		</div>
 	);
 }

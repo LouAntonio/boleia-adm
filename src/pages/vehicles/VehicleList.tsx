@@ -5,15 +5,13 @@ import { FilterBar } from '../../components/ui/FilterBar';
 import { Pagination } from '../../components/ui/Pagination';
 import { SearchInput } from '../../components/ui/SearchInput';
 import { StatusBadge } from '../../components/ui/StatusBadge';
-import { Modal } from '../../components/ui/Modal';
-import {
-	useAdminVehicles,
-	useReviewVehicle,
-} from '../../hooks/queries/useAdmin';
+import { VehicleDetailModal } from './VehicleDetailModal';
+import { useAdminVehicles } from '../../hooks/queries/useAdmin';
 import { VERIFICATION_STATUS_LABELS, enumLabel } from '../../lib/enums';
+import { fmtDate } from '../../lib/format';
 import { useCan } from '../../lib/permissions';
 import type { AdminVehicle } from '../../types/admin';
-import { Car, Loader2 } from 'lucide-react';
+import { Car } from 'lucide-react';
 
 const STATUS_OPTIONS = [
 	{ value: '', label: 'Todos os estados' },
@@ -21,9 +19,6 @@ const STATUS_OPTIONS = [
 	{ value: 'VERIFIED', label: VERIFICATION_STATUS_LABELS.VERIFIED },
 	{ value: 'REJECTED', label: VERIFICATION_STATUS_LABELS.REJECTED },
 ];
-
-const fmtDate = (iso: string | null) =>
-	iso ? new Date(iso).toLocaleDateString('pt-PT') : '—';
 
 /**
  * Revisão de viaturas.
@@ -37,12 +32,11 @@ export function VehicleList() {
 	const [status, setStatus] = useState('');
 	const [search, setSearch] = useState('');
 	const [query, setQuery] = useState('');
-	const [deciding, setDeciding] = useState<{
+	const [selection, setSelection] = useState<{
 		vehicle: AdminVehicle;
-		decision: 'APPROVED' | 'REJECTED';
+		decision: 'APPROVED' | 'REJECTED' | null;
 	} | null>(null);
 	const canReview = useCan('moderate');
-	const review = useReviewVehicle();
 
 	const { data, isLoading, error, refetch } = useAdminVehicles({
 		page,
@@ -123,34 +117,41 @@ export function VehicleList() {
 					{
 						key: 'actions',
 						label: 'Decisão',
-						render: (v: AdminVehicle) => (
-							<div className="flex gap-2">
-								<button
-									type="button"
-									onClick={() =>
-										setDeciding({
-											vehicle: v,
-											decision: 'APPROVED',
-										})
-									}
-									className="min-h-[32px] rounded-md bg-success px-3 py-1.5 text-xs font-sansBold text-white hover:opacity-90"
-								>
-									Aprovar
-								</button>
-								<button
-									type="button"
-									onClick={() =>
-										setDeciding({
-											vehicle: v,
-											decision: 'REJECTED',
-										})
-									}
-									className="min-h-[32px] rounded-md border px-3 py-1.5 text-xs font-sansBold text-error hover:bg-error/5"
-								>
-									Recusar
-								</button>
-							</div>
-						),
+						render: (v: AdminVehicle) =>
+							v.status === 'PENDING' ? (
+								<div className="flex gap-2">
+									<button
+										type="button"
+										onClick={(event) => {
+											event.stopPropagation();
+											setSelection({
+												vehicle: v,
+												decision: 'APPROVED',
+											});
+										}}
+										className="min-h-[32px] rounded-md bg-success px-3 py-1.5 text-xs font-sansBold text-white hover:opacity-90"
+									>
+										Aprovar
+									</button>
+									<button
+										type="button"
+										onClick={(event) => {
+											event.stopPropagation();
+											setSelection({
+												vehicle: v,
+												decision: 'REJECTED',
+											});
+										}}
+										className="min-h-[32px] rounded-md border px-3 py-1.5 text-xs font-sansBold text-error hover:bg-error/5"
+									>
+										Recusar
+									</button>
+								</div>
+							) : (
+								<span className="text-xs text-text-secondary">
+									—
+								</span>
+							),
 					} as Column<AdminVehicle>,
 				]
 			: []),
@@ -192,6 +193,9 @@ export function VehicleList() {
 					loading={isLoading}
 					error={error}
 					onRetry={() => refetch()}
+					onRowClick={(vehicle) =>
+						setSelection({ vehicle, decision: null })
+					}
 					emptyMessage={
 						search
 							? `Nenhuma viatura para "${search}".`
@@ -209,54 +213,12 @@ export function VehicleList() {
 				/>
 			</div>
 
-			<Modal
-				open={deciding !== null}
-				onClose={() => setDeciding(null)}
-				title={
-					deciding?.decision === 'APPROVED'
-						? 'Aprovar viatura'
-						: 'Recusar viatura'
-				}
-			>
-				{deciding ? (
-					<div className="space-y-4">
-						<div className="rounded-lg bg-background p-3 text-body-small">
-							<div className="font-mono font-sansBold">
-								{deciding.vehicle.plate}
-							</div>
-							<div className="text-text-secondary">
-								{deciding.vehicle.make} {deciding.vehicle.model}{' '}
-								· {deciding.vehicle.seats} lugares
-							</div>
-						</div>
-						<p className="text-body-small text-text-secondary">
-							{deciding.decision === 'APPROVED'
-								? 'O motorista passa a poder publicar corridas com esta viatura.'
-								: 'A viatura volta ao estado de recusada e o motorista tem de a corrigir.'}
-						</p>
-						<button
-							type="button"
-							onClick={() => {
-								if (!deciding) return;
-								review.mutate(
-									{
-										id: deciding.vehicle.id,
-										decision: deciding.decision,
-									},
-									{ onSuccess: () => setDeciding(null) },
-								);
-							}}
-							disabled={review.isPending}
-							className="flex w-full items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-sansBold text-white transition-colors hover:bg-primary-hover disabled:opacity-50"
-						>
-							{review.isPending ? (
-								<Loader2 size={16} className="animate-spin" />
-							) : null}
-							Confirmar
-						</button>
-					</div>
-				) : null}
-			</Modal>
+			<VehicleDetailModal
+				open={selection !== null}
+				vehicleId={selection?.vehicle.id ?? null}
+				initialDecision={selection?.decision ?? null}
+				onClose={() => setSelection(null)}
+			/>
 		</div>
 	);
 }

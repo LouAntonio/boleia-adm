@@ -37,6 +37,13 @@ export const RIDE_STATUS_LABELS: Record<string, string> = {
 	CANCELLED: 'Cancelada',
 };
 
+/** `RideStopKind` no backend. */
+export const RIDE_STOP_KIND_LABELS: Record<string, string> = {
+	ORIGIN: 'Origem',
+	INTERMEDIATE: 'Paragem',
+	DESTINATION: 'Destino',
+};
+
 export const BOOKING_STATUS_LABELS: Record<string, string> = {
 	REQUESTED: 'Pedido',
 	CONFIRMED: 'Confirmada',

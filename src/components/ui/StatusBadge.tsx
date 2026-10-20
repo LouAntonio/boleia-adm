@@ -19,8 +19,10 @@ const dotMap: Record<StatusVariant, string> = {
 
 const complianceMap: Record<string, StatusVariant> = {
 	APPROVED: 'success',
+	VERIFIED: 'success',
 	PENDING: 'warning',
 	REJECTED: 'error',
+	NOT_SUBMITTED: 'neutral',
 	SUSPENDED: 'error',
 	ACTIVE: 'success',
 	BANNED: 'error',

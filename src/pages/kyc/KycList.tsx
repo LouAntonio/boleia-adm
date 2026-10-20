@@ -2,18 +2,16 @@ import { useState } from 'react';
 import { PageHeader } from '../../components/ui/PageHeader';
 import { DataTable, type Column } from '../../components/ui/DataTable';
 import { FilterBar } from '../../components/ui/FilterBar';
+import { Pagination } from '../../components/ui/Pagination';
 import { StatusBadge } from '../../components/ui/StatusBadge';
-import { Modal } from '../../components/ui/Modal';
 import { EmptyState } from '../../components/ui/EmptyState';
-import {
-	useKycRequests,
-	useReviewKyc,
-	type KycKind,
-} from '../../hooks/queries/useAdmin';
+import { KycDetailModal } from './KycDetailModal';
+import { useKycRequests, type KycKind } from '../../hooks/queries/useAdmin';
 import { VERIFICATION_STATUS_LABELS, enumLabel } from '../../lib/enums';
+import { fmtDate } from '../../lib/format';
 import { useCan } from '../../lib/permissions';
 import type { KycRequest } from '../../types/admin';
-import { CheckCircle2, ClipboardCheck, Loader2 } from 'lucide-react';
+import { CheckCircle2, ClipboardCheck } from 'lucide-react';
 
 const TABS: { kind: KycKind; label: string }[] = [
 	{ kind: 'driver', label: 'Motorista' },
@@ -27,13 +25,6 @@ const STATUS_OPTIONS = [
 	{ value: 'REJECTED', label: VERIFICATION_STATUS_LABELS.REJECTED },
 	{ value: 'NOT_SUBMITTED', label: VERIFICATION_STATUS_LABELS.NOT_SUBMITTED },
 ];
-
-const fmtDate = (iso: string) =>
-	new Date(iso).toLocaleDateString('pt-PT', {
-		day: '2-digit',
-		month: '2-digit',
-		year: 'numeric',
-	});
 
 /**
  * O nome que identifica o pedido vem da conta, não do formulário de KYC.
@@ -53,49 +44,34 @@ function accountName(request: KycRequest): string {
 /**
  * Fila de revisão de KYC.
  *
- * Aprovar e recusar só aparece a quem tem `kyc:['approve','reject']` — o
- * ADMIN e o MODERATOR. O SUPPORT vê a fila em leitura, que é tudo o que os
- * seus papéis permitem.
+ * Clicar na linha abre a ficha com os documentos; os botões da coluna
+ * «Decisão» abrem a mesma ficha com a decisão já escolhida. Aprovar e recusar
+ * só aparece a quem tem `kyc:['review','approve','reject']` — o ADMIN e o
+ * MODERATOR. O SUPPORT continua a ver a fila, mas os documentos exigem
+ * `kyc:review` e não lhe pertencem.
  */
 export function KycList() {
 	const [kind, setKind] = useState<KycKind>('driver');
 	const [status, setStatus] = useState<string>('PENDING');
-	const [deciding, setDeciding] = useState<{
+	const [page, setPage] = useState(1);
+	const [selection, setSelection] = useState<{
 		request: KycRequest;
-		decision: 'APPROVED' | 'REJECTED';
+		decision: 'APPROVED' | 'REJECTED' | null;
 	} | null>(null);
-	const [reason, setReason] = useState('');
 	const canReview = useCan('moderate');
-	const review = useReviewKyc();
 
-	const {
-		data: page,
-		isLoading,
-		isError,
-		error,
-		refetch,
-	} = useKycRequests(kind, status || undefined);
-	const requests = page?.rows ?? [];
+	const { data, isLoading, isError, error, refetch } = useKycRequests(
+		kind,
+		status || undefined,
+		page,
+	);
+	const requests = data?.rows ?? [];
+	const total = data?.total ?? 0;
 
-	const submit = () => {
-		if (!deciding) return;
-		// A recusa sem motivo não chega ao backend, que exige. Bloquear aqui
-		// evita um erro de validação depois de o modal já estar fechado.
-		if (deciding.decision === 'REJECTED' && !reason.trim()) return;
-		review.mutate(
-			{
-				kind,
-				id: deciding.request.id,
-				decision: deciding.decision,
-				reason: reason.trim() || undefined,
-			},
-			{
-				onSuccess: () => {
-					setDeciding(null);
-					setReason('');
-				},
-			},
-		);
+	const changeKind = (next: KycKind) => {
+		setKind(next);
+		setPage(1);
+		setSelection(null);
 	};
 
 	const columns: Column<KycRequest>[] = [
@@ -126,43 +102,48 @@ export function KycList() {
 		{
 			key: 'submissionDate',
 			label: 'Submetido',
-			render: (r) => fmtDate(r.submissionDate),
+			render: (r) => fmtDate(r.submissionDate ?? r.createdAt),
 		},
 		...(canReview
 			? [
 					{
 						key: 'actions',
 						label: 'Decisão',
-						render: (r: KycRequest) => (
-							<div className="flex gap-2">
-								<button
-									type="button"
-									onClick={() => {
-										setDeciding({
-											request: r,
-											decision: 'APPROVED',
-										});
-										setReason('');
-									}}
-									className="min-h-[32px] rounded-md bg-success px-3 py-1.5 text-xs font-sansBold text-white hover:opacity-90"
-								>
-									Aprovar
-								</button>
-								<button
-									type="button"
-									onClick={() => {
-										setDeciding({
-											request: r,
-											decision: 'REJECTED',
-										});
-										setReason('');
-									}}
-									className="min-h-[32px] rounded-md border px-3 py-1.5 text-xs font-sansBold text-error hover:bg-error/5"
-								>
-									Recusar
-								</button>
-							</div>
-						),
+						render: (r: KycRequest) =>
+							r.status === 'PENDING' ? (
+								<div className="flex gap-2">
+									<button
+										type="button"
+										onClick={(event) => {
+											event.stopPropagation();
+											setSelection({
+												request: r,
+												decision: 'APPROVED',
+											});
+										}}
+										className="min-h-[32px] rounded-md bg-success px-3 py-1.5 text-xs font-sansBold text-white hover:opacity-90"
+									>
+										Aprovar
+									</button>
+									<button
+										type="button"
+										onClick={(event) => {
+											event.stopPropagation();
+											setSelection({
+												request: r,
+												decision: 'REJECTED',
+											});
+										}}
+										className="min-h-[32px] rounded-md border px-3 py-1.5 text-xs font-sansBold text-error hover:bg-error/5"
+									>
+										Recusar
+									</button>
+								</div>
+							) : (
+								<span className="text-xs text-text-secondary">
+									—
+								</span>
+							),
 					} as Column<KycRequest>,
 				]
 			: []),
@@ -172,7 +153,7 @@ export function KycList() {
 		<div>
 			<PageHeader
 				title="Verificação de identidade"
-				subtitle="Documentos de identidade enviados por Passageiros e motoristas"
+				subtitle="Documentos de identidade enviados por passageiros e motoristas"
 				icon={ClipboardCheck}
 			/>
 
@@ -181,7 +162,7 @@ export function KycList() {
 					<button
 						key={tab.kind}
 						type="button"
-						onClick={() => setKind(tab.kind)}
+						onClick={() => changeKind(tab.kind)}
 						className={`min-h-[36px] rounded-full px-4 py-1.5 text-sm font-sansMedium transition-colors ${
 							kind === tab.kind
 								? 'bg-primary text-white'
@@ -198,7 +179,10 @@ export function KycList() {
 					{ key: 'status', label: 'Estado', options: STATUS_OPTIONS },
 				]}
 				filterValues={{ status }}
-				onFilterChange={(_key, value) => setStatus(value ?? '')}
+				onFilterChange={(_key, value) => {
+					setStatus(value ?? '');
+					setPage(1);
+				}}
 			/>
 
 			<div className="mt-4">
@@ -215,78 +199,28 @@ export function KycList() {
 						loading={isLoading}
 						error={error}
 						onRetry={() => refetch()}
+						onRowClick={(request) =>
+							setSelection({ request, decision: null })
+						}
 						emptyMessage="Não há pedidos com este estado."
 					/>
 				)}
 			</div>
 
-			<Modal
-				open={deciding !== null}
-				onClose={() => setDeciding(null)}
-				title={
-					deciding?.decision === 'APPROVED'
-						? 'Aprovar pedido'
-						: 'Recusar pedido'
-				}
-			>
-				{deciding ? (
-					<div className="space-y-4">
-						<div className="rounded-lg bg-background p-3 text-body-small">
-							<div className="font-sansBold">
-								{accountName(deciding.request)}
-							</div>
-							<div className="text-text-secondary">
-								{deciding.request.userId}
-							</div>
-						</div>
+			<Pagination
+				page={page}
+				limit={20}
+				total={total}
+				onPageChange={setPage}
+			/>
 
-						{deciding.decision === 'REJECTED' ? (
-							<div className="space-y-1.5">
-								<label className="block text-sm font-medium text-text">
-									Motivo da recusa
-								</label>
-								<textarea
-									value={reason}
-									onChange={(e) => setReason(e.target.value)}
-									rows={3}
-									placeholder="Ex.: fotografia do BI ilegível"
-									className="w-full rounded-lg border bg-surface p-3 text-sm text-text outline-none focus:border-primary"
-								/>
-								<p className="text-xs text-text-secondary">
-									A pessoa vê este motivo. É o que lhe permite
-									corrigir e voltar a submeter.
-								</p>
-							</div>
-						) : (
-							<p className="text-body-small text-text-secondary">
-								Ao aprovar, esta conta passa a poder{' '}
-								{kind === 'driver'
-									? 'publicar corridas'
-									: 'reservar lugares'}
-								.
-							</p>
-						)}
-
-						<button
-							type="button"
-							onClick={submit}
-							disabled={
-								review.isPending ||
-								(deciding.decision === 'REJECTED' &&
-									!reason.trim())
-							}
-							className="flex w-full items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-sansBold text-white transition-colors hover:bg-primary-hover disabled:opacity-50"
-						>
-							{review.isPending ? (
-								<Loader2 size={16} className="animate-spin" />
-							) : null}
-							{deciding.decision === 'APPROVED'
-								? 'Confirmar aprovação'
-								: 'Confirmar recusa'}
-						</button>
-					</div>
-				) : null}
-			</Modal>
+			<KycDetailModal
+				open={selection !== null}
+				kind={kind}
+				request={selection?.request ?? null}
+				initialDecision={selection?.decision ?? null}
+				onClose={() => setSelection(null)}
+			/>
 		</div>
 	);
 }

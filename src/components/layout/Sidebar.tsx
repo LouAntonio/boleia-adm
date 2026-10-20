@@ -29,9 +29,11 @@ interface NavItem {
  * não estimados: um item aparecer para um papel que o servidor recusa é pior
  * do que o item não existir. Já aconteceu nos dois sentidos.
  *
- * - **KYC** exige `KYC_REVIEW` (`kyc: list, get, review, approve, reject`). O
- *   SUPPORT tem só `list` e `get`, por isso viajava um `403` — e a página, que
- *   não tem ramo de erro, mostrava-lhe a fila vazia.
+ * - **KYC** separa a fila dos documentos. A fila (`KYC_LIST`) aceita
+ *   `kyc: list, get`, que o SUPPORT tem; abrir um BI, uma selfie ou a carta
+ *   (`KYC_DETAIL`) exige `kyc: review`, que ele não tem. O item continua
+ *   escondido porque a página existe para decidir, e o SUPPORT não decide —
+ *   entrar por URL directa mostra a fila, mas o detalhe devolve `403`.
  * - **Auditoria** exige `AUDIT_READ` (`user: list`). O SUPPORT tem `user: get,
  *   list`, portanto pode lê-la. Escondê-la de quem tem permissão não é
  *   prudência, é só atrapalhar.

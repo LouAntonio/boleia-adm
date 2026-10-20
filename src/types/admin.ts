@@ -65,6 +65,49 @@ export interface AdminVehicle {
 	_count: { rides: number };
 }
 
+/** Fotografia pronta a mostrar, com URL grande e miniatura. */
+export interface MediaView {
+	id: string;
+	label: string | null;
+	url: string;
+	thumbnailUrl: string;
+	width: number | null;
+	height: number | null;
+	createdAt: string;
+}
+
+/** `GET /api/admin/vehicles/:id` — a listagem não traz as fotos. */
+export interface AdminVehicleDetail extends AdminVehicle {
+	updatedAt: string;
+	owner: {
+		id: string;
+		name: string;
+		surname: string | null;
+		phone: string | null;
+		email: string;
+		createdAt: string;
+	};
+	photos: MediaView[];
+	_count: { rides: number };
+}
+
+/** Paragem de uma corrida, como o painel a mostra. */
+export interface AdminRideStop {
+	id: string;
+	sequence: number;
+	kind: string;
+	name: string;
+	timeLabel: string;
+	distanceKm: number;
+	locality: {
+		id: string;
+		code: string;
+		municipality: string;
+		name: string;
+		province: { id: string; code: string; name: string };
+	} | null;
+}
+
 export interface AdminRide {
 	id: string;
 	routeName: string;
@@ -74,6 +117,7 @@ export interface AdminRide {
 	seatsTaken: number;
 	pricePerSeat: number;
 	status: string;
+	progressIndex: number;
 	createdAt: string;
 	driver: { id: string; name: string; phone: string | null };
 	vehicle: {
@@ -82,6 +126,7 @@ export interface AdminRide {
 		model: string;
 		plate: string;
 	} | null;
+	stops: AdminRideStop[];
 	_count: { bookings: number };
 }
 
@@ -92,14 +137,24 @@ export interface AdminBooking {
 	paymentMethod: string;
 	status: string;
 	reason: string | null;
+	pickStopIndex: number;
+	dropStopIndex: number;
 	createdAt: string;
 	passenger: { id: string; name: string; phone: string | null };
 	ride: {
 		id: string;
 		routeName: string;
 		departureAt: string;
+		arrivalAt: string;
 		status: string;
-		driver: { id: string; name: string };
+		driver: { id: string; name: string; phone: string | null };
+		vehicle: {
+			id: string;
+			make: string;
+			model: string;
+			plate: string;
+		} | null;
+		stops: AdminRideStop[];
 	};
 }
 
@@ -119,7 +174,29 @@ export interface KycRequest {
 	 */
 	user: { name: string | null; surname: string | null };
 	status: string;
-	submissionDate: string;
+	/** Pode ser nulo: um registo por submeter não tem data de submissão. */
+	submissionDate: string | null;
+	createdAt: string;
+}
+
+/** `GET /api/kyc/driver/:id` e `/passenger/:id`. */
+export interface KycDetail {
+	id: string;
+	userId: string;
+	status: string;
+	rejectionReason: string | null;
+	submissionDate: string | null;
+	verifiedAt: string | null;
+	createdAt: string;
+	account: {
+		id: string;
+		name: string | null;
+		surname: string | null;
+		phone: string | null;
+		email: string;
+		createdAt: string;
+	};
+	documents: MediaView[];
 }
 
 export interface AuditEntry {

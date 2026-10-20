@@ -8,7 +8,9 @@ import type {
 	AdminStats,
 	AdminUser,
 	AdminVehicle,
+	AdminVehicleDetail,
 	AuditEntry,
+	KycDetail,
 	KycRequest,
 	Paged,
 	UserListResponse,
@@ -279,6 +281,8 @@ export interface AdminListParams {
 	search?: string;
 	startDate?: string;
 	endDate?: string;
+	/** `GET /api/admin/bookings?rideId=` — reservas de uma corrida. */
+	rideId?: string;
 }
 
 export function useAdminVehicles(params: AdminListParams = {}) {
@@ -291,6 +295,27 @@ export function useAdminVehicles(params: AdminListParams = {}) {
 			);
 			return res.data;
 		},
+	});
+}
+
+/**
+ * Uma viatura com as fotografias.
+ *
+ * A listagem não as traz: vinte viaturas seriam dezenas de URLs em cada
+ * pedido, e o moderador só precisa delas quando abre a ficha. Sem isto,
+ * aprovava-se um carro sem ver o carro.
+ */
+export function useAdminVehicleDetail(id: string | null, enabled = true) {
+	return useQuery({
+		queryKey: ['admin', 'vehicles', id],
+		queryFn: async () => {
+			const res = await apiClient.get<AdminVehicleDetail>(
+				`/api/admin/vehicles/${id as string}`,
+			);
+			return res.data;
+		},
+		enabled: enabled && !!id,
+		retry: false,
 	});
 }
 
@@ -345,10 +370,31 @@ export function useKycRequests(kind: KycKind, status?: string, page = 1) {
 		queryFn: async () => {
 			const res = await apiClient.get<Paged<KycRequest>>(
 				`/api/kyc/${kind}`,
-				{ params: { status, page } },
+				{ params: { status, page, limit: 20 } },
 			);
 			return res.data;
 		},
+	});
+}
+
+/**
+ * O pedido completo, com os documentos.
+ *
+ * Endpoint separado da fila de propósito: as URLs assinadas dos BIs e das
+ * selfies expiram em 15 minutos, e não há razão para as emitir para vinte
+ * linhas que ninguém abriu. `enabled` deixa o modal pedir só quando abre.
+ */
+export function useKycDetail(kind: KycKind, id: string | null, enabled = true) {
+	return useQuery({
+		queryKey: ['kyc', kind, 'detail', id],
+		queryFn: async () => {
+			const res = await apiClient.get<KycDetail>(
+				`/api/kyc/${kind}/${id as string}`,
+			);
+			return res.data;
+		},
+		enabled: enabled && !!id,
+		retry: false,
 	});
 }
 
