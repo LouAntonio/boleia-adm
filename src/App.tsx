@@ -10,6 +10,7 @@ import { UserDetail } from './pages/users/UserDetail';
 import { KycList } from './pages/kyc/KycList';
 import { VehicleList } from './pages/vehicles/VehicleList';
 import { RideList } from './pages/rides/RideList';
+import { RideDetail } from './pages/rides/RideDetail';
 import { BookingList } from './pages/bookings/BookingList';
 import { AuditLogList } from './pages/audit-logs/AuditLogList';
 
@@ -45,6 +46,7 @@ function AppContent() {
 					<Route path="/kyc" element={<KycList />} />
 					<Route path="/vehicles" element={<VehicleList />} />
 					<Route path="/rides" element={<RideList />} />
+					<Route path="/rides/:id" element={<RideDetail />} />
 					<Route path="/bookings" element={<BookingList />} />
 					<Route path="/audit-logs" element={<AuditLogList />} />
 				</Route>

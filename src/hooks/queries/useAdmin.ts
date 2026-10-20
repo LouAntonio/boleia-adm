@@ -5,6 +5,7 @@ import { authClient, unwrap } from '../../lib/auth-client';
 import type {
 	AdminBooking,
 	AdminRide,
+	AdminRideDetail,
 	AdminStats,
 	AdminUser,
 	AdminVehicle,
@@ -331,6 +332,21 @@ export function useAdminRides(params: AdminListParams = {}) {
 			);
 			return res.data;
 		},
+	});
+}
+
+/** Ficha de uma corrida, incluindo reservas e contactos completos. */
+export function useAdminRideDetail(id: string | undefined) {
+	return useQuery({
+		queryKey: ['admin', 'rides', 'detail', id],
+		queryFn: async () => {
+			const res = await apiClient.get<AdminRideDetail>(
+				`/api/admin/rides/${id}`,
+			);
+			return res.data;
+		},
+		enabled: Boolean(id),
+		retry: false,
 	});
 }
 

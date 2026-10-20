@@ -130,6 +130,55 @@ export interface AdminRide {
 	_count: { bookings: number };
 }
 
+/** Reserva vista dentro da ficha de uma corrida. */
+export interface AdminRideDetailBooking {
+	id: string;
+	seats: number;
+	amount: number;
+	paymentMethod: string;
+	status: string;
+	reason: string | null;
+	pickStopIndex: number;
+	dropStopIndex: number;
+	createdAt: string;
+	passenger: {
+		id: string;
+		name: string | null;
+		surname: string | null;
+		phone: string | null;
+		email: string;
+	};
+}
+
+/**
+ * `GET /api/admin/rides/:id`.
+ *
+ * A listagem traz o suficiente para escolher a corrida. A ficha acrescenta o
+ * que um moderador precisa para investigar: contactos completos do motorista,
+ * a viatura com matrícula, e todas as reservas com o passageiro.
+ */
+export interface AdminRideDetail extends AdminRide {
+	updatedAt: string;
+	driver: {
+		id: string;
+		name: string;
+		surname: string | null;
+		phone: string | null;
+		email: string;
+		createdAt: string;
+	};
+	vehicle: {
+		id: string;
+		make: string;
+		model: string;
+		color: string;
+		plate: string;
+		seats: number;
+		status: string;
+	} | null;
+	bookings: AdminRideDetailBooking[];
+}
+
 export interface AdminBooking {
 	id: string;
 	seats: number;

@@ -5,7 +5,6 @@ import { DataTable, type Column } from '../../components/ui/DataTable';
 import { FilterBar } from '../../components/ui/FilterBar';
 import { Pagination } from '../../components/ui/Pagination';
 import { StatusBadge } from '../../components/ui/StatusBadge';
-import { RideDetailModal } from './RideDetailModal';
 import { useAdminRides } from '../../hooks/queries/useAdmin';
 import { RIDE_STATUS_LABELS, enumLabel } from '../../lib/enums';
 import { fmtDateTime, fmtKz } from '../../lib/format';
@@ -28,15 +27,16 @@ const STATUS_OPTIONS = [
  * que uma corrida cancelada de ontem — exactamente a que um administrador
  * vai querer investigar — não aparecia.
  *
- * Clicar na linha abre o itinerário, o motorista e a viatura. Esta página
- * continua só de leitura: cancelar a corrida de outra pessoa não existe no
- * backend, e um botão que devolvesse 404 seria pior que não o ter.
+ * Clicar na linha abre a ficha da corrida: itinerário, motorista, viatura e
+ * reservas. A ficha é uma página, não um modal, para que o URL possa ser
+ * guardado ou passado a outro moderador. Esta listagem continua só de leitura:
+ * cancelar a corrida de outra pessoa não existe no backend, e um botão que
+ * devolvesse 404 seria pior que não o ter.
  */
 export function RideList() {
 	const navigate = useNavigate();
 	const [page, setPage] = useState(1);
 	const [status, setStatus] = useState('');
-	const [selected, setSelected] = useState<AdminRide | null>(null);
 
 	const { data, isLoading, error, refetch } = useAdminRides({
 		page,
@@ -138,7 +138,9 @@ export function RideList() {
 					loading={isLoading}
 					error={error}
 					onRetry={() => refetch()}
-					onRowClick={(ride) => setSelected(ride)}
+					onRowClick={(ride) =>
+						navigate(`/rides/${encodeURIComponent(ride.id)}`)
+					}
 					emptyMessage="Ainda não há corridas publicadas."
 				/>
 			</div>
@@ -151,14 +153,6 @@ export function RideList() {
 					onPageChange={setPage}
 				/>
 			</div>
-
-			<RideDetailModal
-				ride={selected}
-				onClose={() => setSelected(null)}
-				onOpenBookings={(rideId) =>
-					navigate(`/bookings?rideId=${encodeURIComponent(rideId)}`)
-				}
-			/>
 		</div>
 	);
 }
