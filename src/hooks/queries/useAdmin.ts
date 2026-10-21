@@ -279,6 +279,8 @@ export interface AdminListParams {
 	page?: number;
 	limit?: number;
 	status?: string;
+	/** `INTERMUNICIPAL` | `INTERPROVINCIAL` — só nas corridas. */
+	scope?: string;
 	search?: string;
 	startDate?: string;
 	endDate?: string;

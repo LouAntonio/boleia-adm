@@ -37,6 +37,12 @@ export const RIDE_STATUS_LABELS: Record<string, string> = {
 	CANCELLED: 'Cancelada',
 };
 
+/** `RideScope` no backend. */
+export const RIDE_SCOPE_LABELS: Record<string, string> = {
+	INTERMUNICIPAL: 'Intermunicipal',
+	INTERPROVINCIAL: 'Interprovincial',
+};
+
 /** `RideStopKind` no backend. */
 export const RIDE_STOP_KIND_LABELS: Record<string, string> = {
 	ORIGIN: 'Origem',

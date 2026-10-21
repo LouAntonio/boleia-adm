@@ -108,9 +108,12 @@ export interface AdminRideStop {
 	} | null;
 }
 
+export type RideScope = 'INTERMUNICIPAL' | 'INTERPROVINCIAL';
+
 export interface AdminRide {
 	id: string;
 	routeName: string;
+	scope: RideScope;
 	departureAt: string;
 	arrivalAt: string;
 	seatsTotal: number;

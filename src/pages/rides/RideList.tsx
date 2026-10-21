@@ -6,7 +6,11 @@ import { FilterBar } from '../../components/ui/FilterBar';
 import { Pagination } from '../../components/ui/Pagination';
 import { StatusBadge } from '../../components/ui/StatusBadge';
 import { useAdminRides } from '../../hooks/queries/useAdmin';
-import { RIDE_STATUS_LABELS, enumLabel } from '../../lib/enums';
+import {
+	RIDE_SCOPE_LABELS,
+	RIDE_STATUS_LABELS,
+	enumLabel,
+} from '../../lib/enums';
 import { fmtDateTime, fmtKz } from '../../lib/format';
 import type { AdminRide } from '../../types/admin';
 import { Route } from 'lucide-react';
@@ -17,6 +21,12 @@ const STATUS_OPTIONS = [
 	{ value: 'IN_PROGRESS', label: RIDE_STATUS_LABELS.IN_PROGRESS },
 	{ value: 'COMPLETED', label: RIDE_STATUS_LABELS.COMPLETED },
 	{ value: 'CANCELLED', label: RIDE_STATUS_LABELS.CANCELLED },
+];
+
+const SCOPE_OPTIONS = [
+	{ value: '', label: 'Todos os modos' },
+	{ value: 'INTERMUNICIPAL', label: RIDE_SCOPE_LABELS.INTERMUNICIPAL },
+	{ value: 'INTERPROVINCIAL', label: RIDE_SCOPE_LABELS.INTERPROVINCIAL },
 ];
 
 /**
@@ -37,11 +47,13 @@ export function RideList() {
 	const navigate = useNavigate();
 	const [page, setPage] = useState(1);
 	const [status, setStatus] = useState('');
+	const [scope, setScope] = useState('');
 
 	const { data, isLoading, error, refetch } = useAdminRides({
 		page,
 		limit: 20,
 		status: status || undefined,
+		scope: scope || undefined,
 	});
 
 	const rows = data?.rows ?? [];
@@ -58,7 +70,8 @@ export function RideList() {
 						{r.routeName}
 					</div>
 					<div className="text-xs text-text-secondary">
-						{fmtDateTime(r.departureAt)}
+						{fmtDateTime(r.departureAt)} ·{' '}
+						{enumLabel(RIDE_SCOPE_LABELS, r.scope)}
 					</div>
 				</div>
 			),
@@ -123,10 +136,12 @@ export function RideList() {
 			<FilterBar
 				selectFilters={[
 					{ key: 'status', label: 'Estado', options: STATUS_OPTIONS },
+					{ key: 'scope', label: 'Modo', options: SCOPE_OPTIONS },
 				]}
-				filterValues={{ status }}
-				onFilterChange={(_key, value) => {
-					setStatus(value ?? '');
+				filterValues={{ status, scope }}
+				onFilterChange={(key, value) => {
+					if (key === 'status') setStatus(value ?? '');
+					if (key === 'scope') setScope(value ?? '');
 					setPage(1);
 				}}
 			/>

@@ -14,6 +14,7 @@ import { useAdminRideDetail } from '../../hooks/queries/useAdmin';
 import {
 	BOOKING_STATUS_LABELS,
 	PAYMENT_METHOD_LABELS,
+	RIDE_SCOPE_LABELS,
 	RIDE_STATUS_LABELS,
 	RIDE_STOP_KIND_LABELS,
 	VERIFICATION_STATUS_LABELS,
@@ -69,7 +70,7 @@ export function RideDetail() {
 
 			<PageHeader
 				title={ride.routeName}
-				subtitle={`${fmtDateTime(ride.departureAt)} → ${fmtDateTime(ride.arrivalAt)} · ${durationBetween(ride.departureAt, ride.arrivalAt)}`}
+				subtitle={`${fmtDateTime(ride.departureAt)} → ${fmtDateTime(ride.arrivalAt)} · ${durationBetween(ride.departureAt, ride.arrivalAt)} · ${enumLabel(RIDE_SCOPE_LABELS, ride.scope)}`}
 				icon={RouteIcon}
 				actions={
 					<>
