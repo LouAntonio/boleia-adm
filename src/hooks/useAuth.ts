@@ -35,12 +35,25 @@ export function authMessage(error: unknown, fallback: string): string {
 export function useLogin() {
 	const navigate = useNavigate();
 	const logout = useAuthStore((s) => s.logout);
+	/*
+	 * O better-auth avisa o atom da sessão com um pequeno atraso depois do
+	 * `signIn.email`. Se navegássemos já, o `Layout` lia o `null` antigo e
+	 * mandava a pessoa para `/login`; o refresh é que a trazia de volta. Este
+	 * refetch explícito fecha essa janela.
+	 */
+	const { refetch: refetchSession } = authClient.useSession();
 
 	return useMutation({
 		mutationFn: async (payload: LoginPayload) => {
 			const { error } = await authClient.signIn.email({
 				email: payload.email,
 				password: payload.password,
+				/*
+				 * Desliga o refetch automático. O sinal dele é agendado uns
+				 * milissegundos depois e cancelaria o nosso, deixando a
+				 * navegação à frente da resposta.
+				 */
+				fetchOptions: { disableSignal: true },
 			});
 			if (error) {
 				throw new AuthRequestError(
@@ -51,6 +64,7 @@ export function useLogin() {
 			// Sem sessão não há painel. O `Layout` lê a sessão do `authClient`, e
 			// este era o token guardado em `localStorage`.
 			logout();
+			await refetchSession();
 			return true;
 		},
 		onSuccess: () => {
